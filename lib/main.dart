@@ -837,7 +837,7 @@ class _HomeCategoriesTabState extends State<HomeCategoriesTab> {
   }
 });
 
-
+  }
 @override
 void dispose() {
   _carouselTimer?.cancel();
@@ -845,7 +845,7 @@ void dispose() {
   super.dispose();
 }
 
-  }
+
 
   void _openCart(BuildContext context) {
     Navigator.push(
@@ -943,45 +943,44 @@ void dispose() {
                         ),
                       ),
                       const SizedBox(height: 14),
-                      if (!_isLoggedIn)
-                        FilledButton(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFFDFC876),
-                            foregroundColor: Colors.black,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          onPressed: () async {
-                            final auth = ShopifyAuthService(
-                              shopDomain: ShopifyStorefrontApi.shopDomain,
-                              storefrontAccessToken:
-                                  ShopifyStorefrontApi.publicStorefrontToken,
-                            );
+                     if (!_isLoggedIn)
+  Center(
+    child: FilledButton(
+      style: FilledButton.styleFrom(
+        backgroundColor: const Color(0xFFDFC876),
+        foregroundColor: Colors.black,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      onPressed: () async {
+        final auth = ShopifyAuthService(
+          shopDomain: ShopifyStorefrontApi.shopDomain,
+          storefrontAccessToken:
+              ShopifyStorefrontApi.publicStorefrontToken,
+        );
 
-                            final ok = await Navigator.push<bool>(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => RegisterPage(auth: auth),
-                              ),
-                            );
+        final ok = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => RegisterPage(auth: auth),
+          ),
+        );
 
-                            if (ok == true && mounted) {
-                              await _loadLoginState();
-                            }
-                          },
-                          child: const Text(
-                            'Jetzt registrieren',
-                            style: TextStyle(fontWeight: FontWeight.w900),
-                          ),
-                        )
-                     else
+        if (ok == true && mounted) {
+          await _loadLoginState();
+        }
+      },
+      child: const Text(
+        'Jetzt registrieren',
+        style: TextStyle(fontWeight: FontWeight.w900),
+      ),
+    ),
+  )
+else
   Center(
     child: Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 18,
-        vertical: 12,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
       decoration: BoxDecoration(
         color: const Color(0xFFDFC876),
         borderRadius: BorderRadius.circular(14),
@@ -1004,22 +1003,7 @@ void dispose() {
               ],
             ),
           ),
-          const SizedBox(height: 28),
-          Container(
-            height: 1,
-            margin: const EdgeInsets.symmetric(horizontal: 20),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [
-                  Colors.transparent,
-                  Color(0xFFDFC876),
-                  Colors.transparent,
-                ],
-              ),
-            ),
-          ),
+         
         ],
       ),
     );
@@ -1055,12 +1039,9 @@ void dispose() {
 return ListView(
   padding: const EdgeInsets.only(bottom: 20),
   children: [
-    _buildPromoBanner(),
+ _buildPromoBanner(),
 
-
-
-
-const SizedBox(height: 12),
+const ShrimpDivider(),
 
 const Padding(
   padding: EdgeInsets.fromLTRB(12, 12, 12, 6),
@@ -1175,23 +1156,7 @@ Padding(
 */
 
 
-const SizedBox(height: 28),
-
-Container(
-  height: 1,
-  margin: const EdgeInsets.symmetric(horizontal: 24),
-  decoration: const BoxDecoration(
-    gradient: LinearGradient(
-      begin: Alignment.centerLeft,
-      end: Alignment.centerRight,
-      colors: [
-  Colors.transparent,
-  Color(0xFFDFC876),
-  Colors.transparent,
-],
-    ),
-  ),
-),
+const ShrimpDivider(),
 
             
 
@@ -1315,32 +1280,7 @@ physics: NeverScrollableScrollPhysics(),
                 ),
                              
                              
-                          const SizedBox(height: 20),
-
-
-// ✅ GOLD DIVIDER (wie oben)
-Container(
-  height: 1,
-  margin: const EdgeInsets.symmetric(horizontal: 24),
-  decoration: const BoxDecoration(
-    gradient: LinearGradient(
-      begin: Alignment.centerLeft,
-      end: Alignment.centerRight,
-      colors: [
-        Colors.transparent,
-        Color(0xFFDFC876),
-        Colors.transparent,
-      ],
-    ),
-  ),
-),
-
-
-
-
-
-
-const SizedBox(height: 22),
+const ShrimpDivider(),
 
 
 const Padding(
@@ -3369,6 +3309,36 @@ class _CartIconWithBadgeState extends State<_CartIconWithBadge>
               ),
             ),
           ),
+      ],
+    );
+  }
+}
+
+
+class ShrimpDivider extends StatelessWidget {
+  const ShrimpDivider({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const SizedBox(height: 24),
+        Container(
+          height: 1,
+          margin: const EdgeInsets.symmetric(horizontal: 24),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [
+                Colors.transparent,
+                Color(0xFFDFC876),
+                Colors.transparent,
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
       ],
     );
   }
