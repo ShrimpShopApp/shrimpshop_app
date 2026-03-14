@@ -917,7 +917,7 @@ void dispose() {
                             : 'Exklusiv für App-Kunden',
                         style: const TextStyle(
                           color: Colors.white70,
-                          fontSize: 13,
+                          fontSize: 15,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -926,7 +926,7 @@ void dispose() {
                         '15% Rabatt + gratis Versand',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 22,
+                          fontSize: 24,
                           fontWeight: FontWeight.w900,
                           height: 1.1,
                         ),
@@ -938,7 +938,7 @@ void dispose() {
                             : 'Registriere dich in der App und profitiere automatisch immer von 15% Rabatt + gratis Versand auf alle Bestellungen.',
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 13,
+                          fontSize: 15,
                           height: 1.35,
                         ),
                       ),
@@ -1047,7 +1047,7 @@ const Padding(
   padding: EdgeInsets.fromLTRB(12, 12, 12, 6),
   child: Center(
     child: Text(
-      "Ready to Cook",
+      "NEU - Ready to Cook - NEU",
       textAlign: TextAlign.center,
       style: TextStyle(
         fontSize: 20,
@@ -1157,6 +1157,7 @@ Padding(
 
 
 
+const SizedBox(height: 14),
 const ShrimpDivider(),
 
             
@@ -3323,7 +3324,7 @@ class ShrimpDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const SizedBox(height: 32),
+        const SizedBox(height: 40),
         Container(
           height: 1,
           margin: const EdgeInsets.symmetric(horizontal: 24),
@@ -3339,7 +3340,7 @@ class ShrimpDivider extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 26),
       ],
     );
   }
