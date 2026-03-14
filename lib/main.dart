@@ -864,7 +864,7 @@ void dispose() {
             child: Stack(
               children: [
                 SizedBox(
-                  height: 190,
+                  height: 250,
                   width: double.infinity,
                   child: Image.asset(
                     'assets/promo_banner.jpg',
@@ -904,102 +904,103 @@ void dispose() {
     ),
   ),
 ),
-                Positioned(
-                  left: 16,
-                  right: 16,
-                  bottom: 4,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _isLoggedIn
-                            ? 'Deine App-Vorteile sind aktiv'
-                            : 'Exklusiv für App-Kunden',
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        '15% Rabatt + gratis Versand',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
-                          height: 1.1,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _isLoggedIn
-                            ? 'Als eingeloggter App-Kunde werden deine Vorteile automatisch im Checkout angewendet.'
-                            : 'Registriere dich in der App und profitiere automatisch immer von 15% Rabatt + gratis Versand auf alle Bestellungen.',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          height: 1.35,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                     if (!_isLoggedIn)
-  Center(
-    child: FilledButton(
-      style: FilledButton.styleFrom(
-        backgroundColor: const Color(0xFFDFC876),
-        foregroundColor: Colors.black,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-      onPressed: () async {
-        final auth = ShopifyAuthService(
-          shopDomain: ShopifyStorefrontApi.shopDomain,
-          storefrontAccessToken:
-              ShopifyStorefrontApi.publicStorefrontToken,
-        );
-
-        final ok = await Navigator.push<bool>(
-          context,
-          MaterialPageRoute(
-            builder: (_) => RegisterPage(auth: auth),
+              Positioned.fill(
+  child: Padding(
+    padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          _isLoggedIn
+              ? 'Deine App-Vorteile sind aktiv'
+              : 'Exklusiv für App-Kunden',
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
           ),
-        );
-
-        if (ok == true && mounted) {
-          await _loadLoginState();
-        }
-      },
-      child: const Text(
-        'Jetzt registrieren',
-        style: TextStyle(fontWeight: FontWeight.w900),
-      ),
-    ),
-  )
-else
-  Center(
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFDFC876),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: const Text(
-        'Vorteile aktiv',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: Colors.black,
-          fontWeight: FontWeight.w900,
-          fontSize: 14,
-          letterSpacing: 0.4,
         ),
-      ),
+        const SizedBox(height: 8),
+        const Text(
+          '15% Rabatt + gratis Versand',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 24,
+            fontWeight: FontWeight.w900,
+            height: 1.1,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          _isLoggedIn
+              ? 'Als eingeloggter App-Kunde werden deine Vorteile automatisch im Checkout angewendet.'
+              : 'Registriere dich in der App und profitiere automatisch immer von 15% Rabatt + gratis Versand auf alle Bestellungen.',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 15,
+            height: 1.35,
+          ),
+        ),
+        const SizedBox(height: 16),
+        if (!_isLoggedIn)
+          Center(
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFDFC876),
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: () async {
+                final auth = ShopifyAuthService(
+                  shopDomain: ShopifyStorefrontApi.shopDomain,
+                  storefrontAccessToken:
+                      ShopifyStorefrontApi.publicStorefrontToken,
+                );
+
+                final ok = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => RegisterPage(auth: auth),
+                  ),
+                );
+
+                if (ok == true && mounted) {
+                  await _loadLoginState();
+                }
+              },
+              child: const Text(
+                'Jetzt registrieren',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ),
+          )
+        else
+          Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFDFC876),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Text(
+                'Vorteile aktiv',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 14,
+                  letterSpacing: 0.4,
+                ),
+              ),
+            ),
+          ),
+      ],
     ),
   ),
-                    ],
-                  ),
-                ),
+),
               ],
             ),
           ),
@@ -1036,9 +1037,17 @@ else
               ),
             );
           }
-return ListView(
-  padding: const EdgeInsets.only(bottom: 20),
-  children: [
+return RefreshIndicator(
+  onRefresh: () async {
+    setState(() {
+      _future = ShopifyStorefrontApi.fetchAppNavigation();
+      _futureRandomProducts = _loadRandomProducts();
+    });
+  },
+  child: ListView(
+    physics: const AlwaysScrollableScrollPhysics(),
+    padding: const EdgeInsets.only(bottom: 20),
+    children: [
  _buildPromoBanner(),
 
 const ShrimpDivider(),
@@ -1074,19 +1083,19 @@ SizedBox(
        children: const [
   _HomeCarouselImage(
     asset: 'assets/carousel1.jpg',
-    url: 'https://shrimpshop.ch/collections/unser-bio-gluxshrimps-sortiment',
+    url: 'https://shrimpshop.ch/products/ready-to-cook-gluxshrimps-bbq-style-350g?utm_source=copyToPasteBoard&utm_medium=product-links&utm_content=web',
   ),
   _HomeCarouselImage(
     asset: 'assets/carousel2.jpg',
-    url: 'https://shrimpshop.ch/pages/traditionelle-aufzucht',
+    url: 'https://shrimpshop.ch/products/ready-to-cook-gluxshrimps-bbq-style-350g?utm_source=copyToPasteBoard&utm_medium=product-links&utm_content=web',
   ),
   _HomeCarouselImage(
     asset: 'assets/carousel3.jpg',
-    url: 'https://shrimpshop.ch/pages/code-of-conduct',
+    url: 'https://shrimpshop.ch/products/ready-to-cook-gluxshrimps-bbq-style-350g?utm_source=copyToPasteBoard&utm_medium=product-links&utm_content=web',
   ),
     _HomeCarouselImage(
     asset: 'assets/carousel4.jpg',
-    url: 'https://shrimpshop.ch', // dein gewünschter Link
+    url: 'https://shrimpshop.ch/products/ready-to-cook-gluxshrimps-bbq-style-350g?utm_source=copyToPasteBoard&utm_medium=product-links&utm_content=web', // dein gewünschter Link
   ),
 ],
       ),
@@ -1209,6 +1218,8 @@ SizedBox(
   ),
 ),
 
+const SizedBox(height: 30),
+
 
              GridView.builder(
                   shrinkWrap: true,
@@ -1304,6 +1315,7 @@ const Padding(
 Padding(
   padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
   child: NewsCarouselWidget(
+  key: ValueKey(_futureRandomProducts),
   feedEndpoint: "https://swissprimetaste.ch/api/seafood-news.php",
   onOpen: (url) {
     Navigator.push(
@@ -1320,6 +1332,7 @@ const SizedBox(height: 110),
 
 
             ],
+            ),
           );
         },
       ),
@@ -1692,36 +1705,36 @@ class _ProductCard extends StatelessWidget {
 
                         if (!hasSale) return const SizedBox.shrink();
 
-                        return Positioned(
-                          top: 10,
-                          right: 10,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFDFC876), // Gold
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.35),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: const Text(
-                              'AKTION',
-                              style: TextStyle(
-                                color: Color(0xFF2D2D2D),
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 1.1,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ),
-                        );
+                      return Positioned(
+  top: 8,
+  right: 8,
+  child: Container(
+    padding: const EdgeInsets.symmetric(
+      horizontal: 9,
+      vertical: 4,
+    ),
+    decoration: BoxDecoration(
+      color: const Color(0xFFDFC876),
+      borderRadius: BorderRadius.circular(16),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.28),
+          blurRadius: 6,
+          offset: const Offset(0, 3),
+        ),
+      ],
+    ),
+    child: const Text(
+      'AKTION',
+      style: TextStyle(
+        color: Color(0xFF2D2D2D),
+        fontWeight: FontWeight.w900,
+        letterSpacing: 1,
+        fontSize: 9,
+      ),
+    ),
+  ),
+);
                       },
                     ),
                   ],
@@ -3340,8 +3353,7 @@ class ShrimpDivider extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 26),
-      ],
+       ],
     );
   }
 }
