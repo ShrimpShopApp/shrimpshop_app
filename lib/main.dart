@@ -1156,6 +1156,7 @@ Padding(
 */
 
 
+
 const ShrimpDivider(),
 
             
@@ -3322,7 +3323,7 @@ class ShrimpDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const SizedBox(height: 24),
+        const SizedBox(height: 32),
         Container(
           height: 1,
           margin: const EdgeInsets.symmetric(horizontal: 24),
