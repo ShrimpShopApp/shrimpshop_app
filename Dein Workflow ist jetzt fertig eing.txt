@@ -6,9 +6,3 @@ git commit -m "update"
 git push
 
 
-Mac (iOS bauen)
-
-git pull
-flutter pub get
-cd ios
-pod install

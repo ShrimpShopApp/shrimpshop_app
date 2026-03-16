@@ -804,9 +804,18 @@ class _HomeCategoriesTabState extends State<HomeCategoriesTab> {
   int _currentPage = 0;
   Timer? _carouselTimer;
 
+final PageController _productPageController = PageController(
+  initialPage: 1,
+  viewportFraction: 0.48,
+);
+  double _productPage = 0.0;
+
+
   late Future<List<ShopCollection>> _future;
 
   late Future<List<Product>> _futureRandomProducts;
+
+  
 
   Future<List<Product>> _loadRandomProducts() async {
     final list = await ShopifyStorefrontApi.fetchProducts(first: 60);
@@ -828,6 +837,16 @@ class _HomeCategoriesTabState extends State<HomeCategoriesTab> {
   @override
   void initState() {
     super.initState();
+
+_productPage = 1.0;
+
+    _productPageController.addListener(() {
+  if (!_productPageController.hasClients) return;
+
+  setState(() {
+    _productPage = _productPageController.page ?? 0.0;
+  });
+});
 
     _future = ShopifyStorefrontApi.fetchAppNavigation();
     _futureRandomProducts = _loadRandomProducts(); // ✅ neu
@@ -855,6 +874,7 @@ class _HomeCategoriesTabState extends State<HomeCategoriesTab> {
 void dispose() {
   _carouselTimer?.cancel();
   _pageController.dispose();
+  _productPageController.dispose();
   super.dispose();
 }
 
@@ -876,15 +896,129 @@ void dispose() {
             borderRadius: BorderRadius.circular(16),
             child: Stack(
               children: [
-                SizedBox(
-                  height: 250,
-                  width: double.infinity,
-                  child: Image.asset(
-                    'assets/promo_banner.jpg',
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                Positioned(
+                Container(
+  height: 180,
+  width: double.infinity,
+  color: Colors.black,
+  child: Image.asset(
+    'assets/promo_banner.jpg',
+    fit: BoxFit.cover,
+  ),
+),
+          
+             Positioned.fill(
+  child: Container(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+  begin: Alignment.topCenter,
+  end: Alignment.bottomCenter,
+  colors: [
+    Colors.black.withOpacity(0.5),
+    Colors.black.withOpacity(0.5),
+  ],
+),
+    ),
+  ),
+),
+
+              Positioned.fill(
+  child: Padding(
+   padding: const EdgeInsets.fromLTRB(20, 22, 20, 22),
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+  const Text(
+    'Exklusiv für App-Kunden',
+    style: TextStyle(
+      color: Colors.white70,
+      fontSize: 14,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.3,
+    ),
+  ),
+  const SizedBox(height: 8),
+  const Text(
+    '15% Rabatt + gratis Versand',
+    style: TextStyle(
+      color: Colors.white,
+      fontSize: 20,
+      fontWeight: FontWeight.w700,
+      height: 1.05,
+    ),
+  ),
+  const SizedBox(height: 8),
+  Text(
+    _isLoggedIn
+        ? 'Deine Vorteile werden automatisch im Checkout angewendet.'
+        : 'Registrieren und Vorteile sichern.',
+    style: const TextStyle(
+      color: Colors.white,
+      fontSize: 14,
+      height: 1.35,
+      fontWeight: FontWeight.w500,
+    ),
+  ),
+
+     
+  const SizedBox(height: 12),
+  if (!_isLoggedIn)
+    FilledButton(
+      style: FilledButton.styleFrom(
+        backgroundColor: const Color(0xFFDFC876),
+        foregroundColor: Colors.black,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      onPressed: () async {
+        final auth = ShopifyAuthService(
+          shopDomain: ShopifyStorefrontApi.shopDomain,
+          storefrontAccessToken:
+              ShopifyStorefrontApi.publicStorefrontToken,
+        );
+
+        final ok = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => RegisterPage(auth: auth),
+          ),
+        );
+
+        if (ok == true && mounted) {
+          await _loadLoginState();
+        }
+      },
+      child: const Text(
+        'Jetzt registrieren',
+        style: TextStyle(fontWeight: FontWeight.w900),
+      ),
+    )
+  else
+    Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFDFC876),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Text(
+        'Vorteile aktiv',
+        style: TextStyle(
+          color: Colors.black,
+          fontWeight: FontWeight.w900,
+          fontSize: 14,
+        ),
+      ),
+    ),
+
+    
+],
+    ),
+  ),
+),
+
+Positioned(
   top: 12,
   right: 12,
   child: Container(
@@ -903,119 +1037,13 @@ void dispose() {
     ),
   ),
 ),
-             Positioned.fill(
-  child: Container(
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.bottomCenter,
-        end: Alignment.topCenter,
-        colors: [
-          Colors.white.withOpacity(0.55),
-          Colors.white.withOpacity(0.15),
-        ],
-      ),
-    ),
-  ),
-),
-              Positioned.fill(
-  child: Padding(
-    padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          _isLoggedIn
-              ? 'Deine App-Vorteile sind aktiv'
-              : 'Exklusiv für App-Kunden',
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          '15% Rabatt + gratis Versand',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 24,
-            fontWeight: FontWeight.w900,
-            height: 1.1,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          _isLoggedIn
-              ? 'Als eingeloggter App-Kunde werden deine Vorteile automatisch im Checkout angewendet.'
-              : 'Registriere dich in der App und profitiere automatisch immer von 15% Rabatt + gratis Versand auf alle Bestellungen.',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 15,
-            height: 1.35,
-          ),
-        ),
-        const SizedBox(height: 16),
-        if (!_isLoggedIn)
-          Center(
-            child: FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFFDFC876),
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onPressed: () async {
-                final auth = ShopifyAuthService(
-                  shopDomain: ShopifyStorefrontApi.shopDomain,
-                  storefrontAccessToken:
-                      ShopifyStorefrontApi.publicStorefrontToken,
-                );
 
-                final ok = await Navigator.push<bool>(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => RegisterPage(auth: auth),
-                  ),
-                );
 
-                if (ok == true && mounted) {
-                  await _loadLoginState();
-                }
-              },
-              child: const Text(
-                'Jetzt registrieren',
-                style: TextStyle(fontWeight: FontWeight.w900),
-              ),
-            ),
-          )
-        else
-          Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFDFC876),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Text(
-                'Vorteile aktiv',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.black,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 14,
-                  letterSpacing: 0.4,
-                ),
-              ),
-            ),
-          ),
-      ],
-    ),
-  ),
-),
+
               ],
             ),
+
+            
           ),
          
         ],
@@ -1063,23 +1091,9 @@ return RefreshIndicator(
     children: [
  _buildPromoBanner(),
 
-const ShrimpDivider(),
 
-const Padding(
-  padding: EdgeInsets.fromLTRB(12, 12, 12, 6),
-  child: Center(
-    child: Text(
-      "NEU - Ready to Cook - NEU",
-      textAlign: TextAlign.center,
-      style: TextStyle(
-        fontSize: 20,
-        fontWeight: FontWeight.w900,
-        color: Color.fromARGB(255, 238, 238, 238),
-        letterSpacing: 0.6,
-      ),
-    ),
-  ),
-),
+const SizedBox(height: 28),
+
 
 SizedBox(
   height: 200,
@@ -1178,28 +1192,22 @@ Padding(
 */
 
 
-
-const SizedBox(height: 14),
-const ShrimpDivider(),
-
-            
-
-             const Padding(
-  padding: EdgeInsets.fromLTRB(12, 12, 12, 6),
-  child: Center(
-    child: Text(
-      "Premium Seafood & More",
-      textAlign: TextAlign.center,
-      style: TextStyle(
-        fontSize: 20,
-        fontWeight: FontWeight.w800,
-        color: Color.fromARGB(255, 238, 238, 238),
-      ),
+const SizedBox(height: 24),
+           
+const Padding(
+  padding: EdgeInsets.fromLTRB(16, 18, 16, 8),
+  child: Text(
+    'Top Picks',
+    style: TextStyle(
+      fontSize: 16,
+      fontWeight: FontWeight.w800,
+      color: Colors.white,
     ),
   ),
 ),
+ 
 SizedBox(
-  height: 220,
+  height: 250,
   child: FutureBuilder<List<Product>>(
     future: _futureRandomProducts,
     builder: (context, psnap) {
@@ -1207,23 +1215,33 @@ SizedBox(
 
       final products = psnap.data!;
 
-      return ListView.builder(
-        scrollDirection: Axis.horizontal, // 👉 links/rechts wischen
+      return PageView.builder(
+        controller: _productPageController,
         itemCount: products.length,
+        padEnds: true,
         itemBuilder: (context, i) {
           final p = products[i];
 
-          return SizedBox(
-            width: 160,
-            child: _ProductCard(
-              p: p,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ProductDetailPage(p),
+          final diff = (_productPage - i).abs();
+          final scale = (1 - (diff * 0.18)).clamp(0.82, 1.0);
+          final verticalPadding = (1 - scale) * 40;
+
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            padding: EdgeInsets.fromLTRB(6, verticalPadding, 6, 10),
+            child: Transform.scale(
+              scale: scale,
+              child: _ProductCard(
+                  p: p,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ProductDetailPage(p),
+                    ),
+                  ),
                 ),
-              ),
-            ),
+             ),
           );
         },
       );
