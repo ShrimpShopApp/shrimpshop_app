@@ -16,6 +16,8 @@ import 'package:provider/provider.dart';
 import 'recipes_page.dart';
 import 'login_page.dart';
 import 'account_page.dart';
+import 'favorites_model.dart';
+import 'favorites_page.dart';
 
 
 /// =======================
@@ -34,18 +36,29 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('de_CH', null);
   Intl.defaultLocale = 'de_CH';
-  runApp(const ShrimpShopApp());
+
+  final favoritesModel = FavoritesModel();
+  await favoritesModel.loadFavorites();
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<CartModel>.value(value: cart),
+        ChangeNotifierProvider<FavoritesModel>.value(value: favoritesModel),
+      ],
+      child: const ShrimpShopApp(),
+    ),
+  );
 }
+
 
 class ShrimpShopApp extends StatelessWidget {
   const ShrimpShopApp({super.key});
 
   @override
   Widget build(BuildContext context) {
- 
-return ChangeNotifierProvider<CartModel>.value(
-  value: cart,
-  child: MaterialApp(
+  
+  return MaterialApp(
     title: 'ShrimpShop',
     debugShowCheckedModeBanner: false,
 
@@ -86,7 +99,7 @@ return ChangeNotifierProvider<CartModel>.value(
     ),
 
     home: const SplashPage(),
-  ),
+  
 );
   }
 }
@@ -1674,6 +1687,7 @@ class _ProductCard extends StatelessWidget {
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(18),
                 ),
+               
                 child: Stack(
                   children: [
                     Container(
@@ -1688,6 +1702,65 @@ class _ProductCard extends StatelessWidget {
                         ),
                       ),
                     ),
+
+
+Positioned(
+  top: 8,
+  left: 8,
+  child: Consumer<FavoritesModel>(
+    builder: (context, favorites, _) {
+      final isFav = favorites.isFavorite(p.gid);
+
+      return Material(
+        color: Colors.transparent,
+       child: GestureDetector(
+  onTap: () async {
+    final added = await favorites.toggleFavorite(
+      FavoriteItem(
+  id: p.gid,
+  title: p.title,
+  imageUrl: p.imageUrl,
+  priceText: formatCHF(p.defaultVariant.price),
+  subtitle: p.defaultVariant.title,
+  variantGid: p.defaultVariant.gid,
+),
+    );
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            added
+                ? 'Zu Favoriten hinzugefügt'
+                : 'Aus Favoriten entfernt',
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  },
+  child: Container(
+    padding: const EdgeInsets.all(10),
+    decoration: BoxDecoration(
+      color: Colors.black.withOpacity(0.72),
+      shape: BoxShape.circle,
+      border: Border.all(
+        color: Colors.white.withOpacity(0.18),
+      ),
+    ),
+    child: Icon(
+      isFav ? Icons.favorite : Icons.favorite_border,
+      color: const Color(0xFFDFC876),
+      size: 20,
+    ),
+  ),
+),
+      );
+    },
+  ),
+),
+
+
 
                     // ✅ SALE Badge nur wenn compareAtPrice existiert UND höher ist als price
                     Builder(
@@ -1706,12 +1779,12 @@ class _ProductCard extends StatelessWidget {
                         if (!hasSale) return const SizedBox.shrink();
 
                       return Positioned(
-  top: 8,
+  top: 12,
   right: 8,
   child: Container(
     padding: const EdgeInsets.symmetric(
       horizontal: 9,
-      vertical: 4,
+      vertical: 5,
     ),
     decoration: BoxDecoration(
       color: const Color(0xFFDFC876),
@@ -2052,6 +2125,66 @@ void _addToCart() {
                   ),
                 ),
 
+
+Positioned(
+  top: 16,
+  left: 16,
+  child: Consumer<FavoritesModel>(
+    builder: (context, favorites, _) {
+      final isFav = favorites.isFavorite(p.gid);
+
+      return GestureDetector(
+        onTap: () async {
+          final added = await favorites.toggleFavorite(
+            FavoriteItem(
+  id: p.gid,
+  title: p.title,
+  imageUrl: p.imageUrl,
+  priceText: formatCHF(_selected.price),
+  subtitle: _selected.title,
+  variantGid: _selected.gid,
+),
+          );
+
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  added
+                      ? 'Zu Favoriten hinzugefügt'
+                      : 'Aus Favoriten entfernt',
+                ),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        },
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.72),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: Colors.white.withOpacity(0.18),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.28),
+                blurRadius: 6,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Icon(
+            isFav ? Icons.favorite : Icons.favorite_border,
+            color: const Color(0xFFDFC876),
+            size: 18,
+          ),
+        ),
+      );
+    },
+  ),
+),
                 if (_selected.compareAtPrice != null &&
                     _selected.compareAtPrice! > _selected.price)
                   Positioned(
@@ -2940,6 +3073,23 @@ Future<void> _logout() async {
   );
 }
 
+List<Product>? _allProductsCache;
+
+Future<List<Product>> _loadAllProductsOnce() async {
+  if (_allProductsCache != null) return _allProductsCache!;
+  _allProductsCache = await ShopifyStorefrontApi.fetchProducts(first: 250);
+  return _allProductsCache!;
+}
+
+Future<Product?> _findProductByGid(String gid) async {
+  final products = await _loadAllProductsOnce();
+
+  for (final p in products) {
+    if (p.gid == gid) return p;
+  }
+
+  return null;
+}
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -3055,7 +3205,131 @@ if (_customer != null) ...[
         
         const Divider(),
 
+Consumer<FavoritesModel>(
+  builder: (context, favorites, _) {
+    return ListTile(
+      leading: const Icon(Icons.favorite_border, color: Colors.white),
+      title: const Text(
+        'Meine Favoriten',
+        style: TextStyle(color: Colors.white),
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (favorites.count > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFDFC876),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                favorites.count.toString(),
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          const SizedBox(width: 8),
+          const Icon(Icons.chevron_right, color: Colors.white54),
+        ],
+      ),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => FavoritesPage(
+              onOpenProduct: (item) async {
+                final product = await _findProductByGid(item.id);
 
+                if (!mounted) return;
+
+                if (product == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Produkt konnte nicht gefunden werden.'),
+                    ),
+                  );
+                  return;
+                }
+
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ProductDetailPage(product),
+                  ),
+                );
+              },
+              onAddToCart: (item) async {
+                final product = await _findProductByGid(item.id);
+
+                if (!mounted) return;
+
+                if (product == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Produkt konnte nicht gefunden werden.'),
+                    ),
+                  );
+                  return;
+                }
+
+                Variant variant = product.defaultVariant;
+
+                final wantedVariantGid = item.variantGid;
+                if (wantedVariantGid != null && wantedVariantGid.isNotEmpty) {
+                  for (final v in product.variants) {
+                    if (v.gid == wantedVariantGid) {
+                      variant = v;
+                      break;
+                    }
+                  }
+                }
+
+                context.read<CartModel>().add(product, variant);
+
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+ScaffoldMessenger.of(context).showSnackBar(
+  SnackBar(
+    duration: const Duration(milliseconds: 900),
+    behavior: SnackBarBehavior.floating,
+    backgroundColor: const Color(0xFF111111),
+    margin: const EdgeInsets.only(bottom: 90, left: 24, right: 24),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(14),
+      side: const BorderSide(color: Color(0xFFDFC876)),
+    ),
+    content: const Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.check_circle,
+          color: Color(0xFFDFC876),
+          size: 20,
+        ),
+        SizedBox(width: 8),
+        Text(
+          'Zum Warenkorb hinzugefügt',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    ),
+  ),
+);
+              },
+            ),
+          ),
+        );
+      },
+    );
+  },
+),
 
 if (_loggedIn) ...[
   ListTile(
@@ -3084,6 +3358,9 @@ if (_loggedIn) ...[
       );
     },
   ),
+
+
+
 
   ListTile(
     leading: const Icon(Icons.logout),
