@@ -261,9 +261,9 @@ Future<void> markCustomerAsMobileApp({
 
     final accessToken = tokenObj['accessToken'] as String;
 
-    await markCustomerAsMobileApp(
-      customerAccessToken: accessToken,
-    );
+//    await markCustomerAsMobileApp(
+  //    customerAccessToken: accessToken,
+   // );
 
     return accessToken;
   }

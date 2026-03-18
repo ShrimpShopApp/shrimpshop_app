@@ -2,11 +2,18 @@ import 'package:flutter/material.dart';
 import 'shopify_auth_service.dart';
 import 'auth_storage.dart';
 import 'activation_info_page.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class RegisterPage extends StatefulWidget {
   final ShopifyAuthService auth;
+  final bool isGastro;
 
-  const RegisterPage({super.key, required this.auth});
+  const RegisterPage({
+    super.key,
+    required this.auth,
+    this.isGastro = false,
+  });
 
   @override
   State<RegisterPage> createState() => _RegisterPageState();
@@ -76,56 +83,108 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  Future<void> _submit() async {
-    FocusScope.of(context).unfocus();
 
-    setState(() {
-      _error = null;
-      _loading = true;
-    });
+Future<void> _notifyGastroRegistration({
+  required String email,
+  required String firstName,
+  required String lastName,
+}) async {
+  final uri = Uri.parse('https://swissprimetaste.ch/api/gastro-register.php?v=3');
+  debugPrint('GASTRO URL: $uri');
 
-    try {
-      if (!_formKey.currentState!.validate()) {
-        setState(() => _loading = false);
-        return;
-      }
+  final response = await http.post(
+    uri,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: jsonEncode({
+      'email': email.trim(),
+      'firstName': firstName.trim(),
+      'lastName': lastName.trim(),
+      'source': 'app',
+      'tag': 'gastro',
+    }),
+  );
 
-      final email = _email.text.trim().toLowerCase();
-      final pw = _pw.text;
+  debugPrint('GASTRO status: ${response.statusCode}');
+  debugPrint('GASTRO body: ${response.body}');
 
-     final accessToken = await widget.auth.createCustomer(
-  email: email,
-  password: pw,
-  firstName: _first.text.trim(),
-  lastName: _last.text.trim(),
-  acceptsMarketing: _marketing,
-);
-
-await AuthStorage.saveToken(accessToken);
-
-      if (!mounted) return;
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ActivationInfoPage(
-            email: email,
-            auth: widget.auth,
-            password: pw,
-          ),
-        ),
-      );
-    } catch (e) {
-      setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
-      });
-    } finally {
-      if (mounted) {
-        setState(() => _loading = false);
-      }
-    }
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    throw Exception(
+      'Gastro-Tag konnte nicht gesetzt werden. '
+      'HTTP ${response.statusCode}: ${response.body}',
+    );
   }
 
+  final data = jsonDecode(response.body);
+
+  if (data is Map && data['ok'] != true) {
+    throw Exception(
+      data['error']?.toString() ?? 'Unbekannter Fehler beim Gastro-Tagging.',
+    );
+  }
+}
+
+Future<void> _submit() async {
+  FocusScope.of(context).unfocus();
+
+  setState(() {
+    _error = null;
+    _loading = true;
+  });
+
+  try {
+    if (!_formKey.currentState!.validate()) {
+      setState(() => _loading = false);
+      return;
+    }
+
+    final email = _email.text.trim().toLowerCase();
+    final pw = _pw.text;
+    final firstName = _first.text.trim();
+    final lastName = _last.text.trim();
+
+    final accessToken = await widget.auth.createCustomer(
+      email: email,
+      password: pw,
+      firstName: firstName,
+      lastName: lastName,
+      acceptsMarketing: _marketing,
+    );
+
+    await AuthStorage.saveToken(accessToken);
+
+    // ✅ SCHRITT 6: nur bei Gastro-Registrierung Server informieren
+    if (widget.isGastro) {
+      await _notifyGastroRegistration(
+        email: email,
+        firstName: firstName,
+        lastName: lastName,
+      );
+    }
+
+    if (!mounted) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ActivationInfoPage(
+          email: email,
+          auth: widget.auth,
+          password: pw,
+        ),
+      ),
+    );
+  } catch (e) {
+    setState(() {
+      _error = e.toString().replaceFirst('Exception: ', '');
+    });
+  } finally {
+    if (mounted) {
+      setState(() => _loading = false);
+    }
+  }
+}
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -134,30 +193,32 @@ await AuthStorage.saveToken(accessToken);
         backgroundColor: Colors.black,
         surfaceTintColor: Colors.black,
         elevation: 0,
-        title: const Text(
-          'Konto erstellen',
-          style: TextStyle(color: Colors.white),
-        ),
+                title: Text(
+            widget.isGastro ? 'Gastro-Registrierung' : 'Konto erstellen',
+            style: const TextStyle(color: Colors.white),
+          ),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
-            const Text(
-              'Registrieren',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 26,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.2,
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Schneller Checkout, exklusive App-Angebote und alles an einem Ort.',
-              style: TextStyle(color: Colors.white70, fontSize: 14),
-            ),
+           Text(
+                          widget.isGastro ? 'Als Gastro registrieren' : 'Registrieren',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 26,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                                    const SizedBox(height: 6),
+                                  Text(
+                          widget.isGastro
+                              ? 'Für Restaurants, Catering und Wiederverkäufer. Nach der Registrierung wird dein Konto für den Gastro-Bereich markiert.'
+                              : 'Schneller Checkout, exklusive App-Angebote und alles an einem Ort.',
+                          style: const TextStyle(color: Colors.white70, fontSize: 14),
+                        ),
             const SizedBox(height: 16),
 
             if (_error != null) ...[
@@ -354,9 +415,9 @@ await AuthStorage.saveToken(accessToken);
                                 width: 18,
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               )
-                            : const Text(
-                                'Konto erstellen',
-                                style: TextStyle(fontWeight: FontWeight.w700),
+                            : Text(
+                                widget.isGastro ? 'Als Gastro registrieren' : 'Konto erstellen',
+                                style: const TextStyle(fontWeight: FontWeight.w700),
                               ),
                       ),
                     ),

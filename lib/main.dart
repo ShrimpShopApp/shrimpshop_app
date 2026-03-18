@@ -18,6 +18,10 @@ import 'login_page.dart';
 import 'account_page.dart';
 import 'favorites_model.dart';
 import 'favorites_page.dart';
+import 'customer_access_model.dart';
+import 'shopify_customer_service.dart';
+import 'gastro_page.dart';
+
 
 
 /// =======================
@@ -45,6 +49,7 @@ Future<void> main() async {
       providers: [
         ChangeNotifierProvider<CartModel>.value(value: cart),
         ChangeNotifierProvider<FavoritesModel>.value(value: favoritesModel),
+        ChangeNotifierProvider(create: (_) => CustomerAccessModel()),
       ],
       child: const ShrimpShopApp(),
     ),
@@ -317,12 +322,42 @@ String sanitizeProductHtml(String html) {
 /// =======================
 class ShopifyStorefrontApi {
   static const String publicStorefrontToken =
-      'a63ce8059e3787853a8608a90ff00378';
+      '33479b3363169a76f9525da631b6f2c9';
   static const String shopDomain = 'shrimpshopswiss.myshopify.com';
   static const String apiVersion = '2024-10';
 
+
+static const String gastroStatusUrl =
+    'https://swissprimetaste.ch/api/gastro-status.php';
+
+Future<bool> checkGastroStatusByEmail(String email) async {
+  if (email.trim().isEmpty) return false;
+
+  final res = await http.post(
+    Uri.parse(gastroStatusUrl),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: jsonEncode({
+      'email': email.trim(),
+    }),
+  );
+
+  debugPrint('[GASTRO-STATUS] code=${res.statusCode}');
+  debugPrint('[GASTRO-STATUS] body=${res.body}');
+
+  if (res.statusCode != 200) return false;
+
+  final data = jsonDecode(res.body) as Map<String, dynamic>;
+  if (data['ok'] != true) return false;
+
+  return data['isGastro'] == true;
+}
+
+
   // ✅ Dein Shopify-Menü-Handle (aus Screenshot): "app-kategorien"
   static const String appMenuHandle = 'app-kategorien';
+  static const String gastroCollectionHandle = 'gastro';
 
   static Uri get endpoint =>
       Uri.https(shopDomain, '/api/$apiVersion/graphql.json');
@@ -799,6 +834,9 @@ class HomeCategoriesTab extends StatefulWidget {
 class _HomeCategoriesTabState extends State<HomeCategoriesTab> {
 
   bool _isLoggedIn = false;
+bool _isGastro = false;
+
+late Future<List<Product>> _futureGastroProducts;
 
   final PageController _pageController = PageController();
   int _currentPage = 0;
@@ -824,15 +862,44 @@ final PageController _productPageController = PageController(
   }
 
 
-  Future<void> _loadLoginState() async {
-    final token = await AuthStorage.readToken();
+ Future<void> _loadLoginState() async {
+  final token = await AuthStorage.readToken();
+
+  if (!mounted) return;
+
+  if (token == null || token.isEmpty) {
+    setState(() {
+      _isLoggedIn = false;
+      _isGastro = false;
+    });
+    return;
+  }
+
+  try {
+    final customerService = ShopifyCustomerService(
+      shopDomain: ShopifyStorefrontApi.shopDomain,
+      storefrontAccessToken: ShopifyStorefrontApi.publicStorefrontToken,
+    );
+
+    final isGastro = await customerService.isGastroCustomer(
+      customerAccessToken: token,
+    );
 
     if (!mounted) return;
 
     setState(() {
-      _isLoggedIn = token != null && token.isNotEmpty;
+      _isLoggedIn = true;
+      _isGastro = isGastro;
+    });
+  } catch (_) {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoggedIn = true;
+      _isGastro = false;
     });
   }
+}
 
   @override
   void initState() {
@@ -850,6 +917,10 @@ _productPage = 1.0;
 
     _future = ShopifyStorefrontApi.fetchAppNavigation();
     _futureRandomProducts = _loadRandomProducts(); // ✅ neu
+    _futureGastroProducts = ShopifyStorefrontApi.fetchProductsByCollection(
+  handle: ShopifyStorefrontApi.gastroCollectionHandle,
+  first: 60,
+);
     _loadLoginState();
 
     _carouselTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
@@ -897,7 +968,7 @@ void dispose() {
             child: Stack(
               children: [
                 Container(
-  height: 180,
+  height: 200,
   width: double.infinity,
   color: Colors.black,
   child: Image.asset(
@@ -923,7 +994,7 @@ void dispose() {
 
               Positioned.fill(
   child: Padding(
-   padding: const EdgeInsets.fromLTRB(20, 22, 20, 22),
+   padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
     child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1051,6 +1122,69 @@ Positioned(
     );
   }
 
+Widget _buildGastroCollectionTop() {
+  return FutureBuilder<List<Product>>(
+    future: _futureGastroProducts,
+    builder: (context, snap) {
+      if (!snap.hasData) {
+        return const Padding(
+          padding: EdgeInsets.all(16),
+          child: Center(child: CircularProgressIndicator()),
+        );
+      }
+
+      final products = snap.data!;
+      if (products.isEmpty) {
+        return const SizedBox.shrink();
+      }
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Text(
+              'Gastro Sortiment',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFFDFC876),
+              ),
+            ),
+          ),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            itemCount: products.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 12,
+              childAspectRatio: 0.72,
+            ),
+            itemBuilder: (context, i) {
+              final p = products[i];
+
+              return _ProductCard(
+                p: p,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ProductDetailPage(p),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
+
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1080,19 +1214,30 @@ Positioned(
           }
 return RefreshIndicator(
   onRefresh: () async {
-    setState(() {
-      _future = ShopifyStorefrontApi.fetchAppNavigation();
-      _futureRandomProducts = _loadRandomProducts();
-    });
-  },
+  await _loadLoginState();
+
+  setState(() {
+    _future = ShopifyStorefrontApi.fetchAppNavigation();
+    _futureRandomProducts = _loadRandomProducts();
+    _futureGastroProducts = ShopifyStorefrontApi.fetchProductsByCollection(
+      handle: ShopifyStorefrontApi.gastroCollectionHandle,
+      first: 60,
+    );
+  });
+},
   child: ListView(
     physics: const AlwaysScrollableScrollPhysics(),
     padding: const EdgeInsets.only(bottom: 20),
-    children: [
- _buildPromoBanner(),
+  
+   children: [
+  _buildPromoBanner(),
 
+  if (_isGastro) ...[
+    const SizedBox(height: 12),
+    _buildGastroCollectionTop(),
+  ],
 
-const SizedBox(height: 28),
+  const SizedBox(height: 28),
 
 
 SizedBox(
@@ -1833,52 +1978,87 @@ Positioned(
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    p.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: kText,
-                    ),
+  padding: const EdgeInsets.all(10),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        p.title,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          fontWeight: FontWeight.w800,
+          color: kText,
+        ),
+      ),
+
+      const SizedBox(height: 4),
+
+     Builder(
+  builder: (context) {
+    final realVariants = p.variants.where((v) {
+      final t = v.title.trim().toLowerCase();
+      return t.isNotEmpty && t != 'default title';
+    }).toList();
+
+    if (realVariants.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    String variantText;
+
+    if (realVariants.length == 1) {
+      variantText = realVariants.first.title;
+    } else {
+      variantText = '${realVariants.first.title} • weitere Varianten';
+    }
+
+    return Text(
+      variantText,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: const TextStyle(
+        color: Colors.white70,
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+  },
+),
+
+      const SizedBox(height: 6),
+
+      Builder(
+        builder: (context) {
+          final v = p.variants.firstWhere(
+            (x) =>
+                x.compareAtPrice != null &&
+                x.compareAtPrice! > x.price,
+            orElse: () => p.defaultVariant,
+          );
+
+          final hasCompare =
+              (v.compareAtPrice != null &&
+              v.compareAtPrice! > v.price);
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (hasCompare)
+                Text(
+                  formatCHF(v.compareAtPrice!),
+                  style: const TextStyle(
+                    decoration: TextDecoration.lineThrough,
+                    color: Colors.grey,
+                    fontSize: 12,
                   ),
-                  const SizedBox(height: 6),
-
-                  Builder(
-                    builder: (context) {
-                      final v = p.variants.firstWhere(
-                        (x) =>
-                            x.compareAtPrice != null &&
-                            x.compareAtPrice! > x.price,
-                        orElse: () => p.defaultVariant,
-                      );
-
-                      final hasCompare =
-                          (v.compareAtPrice != null &&
-                          v.compareAtPrice! > v.price);
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (hasCompare)
-                            Text(
-                              formatCHF(v.compareAtPrice!),
-                              style: const TextStyle(
-                                decoration: TextDecoration.lineThrough,
-                                color: Colors.grey,
-                                fontSize: 12,
-                              ),
-                            ),
-                          Text(
-                            formatCHF(v.price),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w900,
-                              color: kAccent,
-                            ),
+                ),
+              Text(
+                formatCHF(v.price),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  color: kAccent,
+               ),
                           ),
                         ],
                       );
@@ -3029,8 +3209,11 @@ class _MoreTabState extends State<MoreTab> {
 
 Future<void> _loadCustomer() async {
   final token = await AuthStorage.readToken();
+  final access = context.read<CustomerAccessModel>();
 
   if (token == null || token.isEmpty) {
+    access.setLoggedOut();
+
     setState(() {
       _customer = null;
       _loggedIn = false;
@@ -3045,33 +3228,46 @@ Future<void> _loadCustomer() async {
       storefrontAccessToken: ShopifyStorefrontApi.publicStorefrontToken,
     );
 
-final customer = await auth.fetchCustomer(token);
+    final customer = await auth.fetchCustomer(token);
 
-if (customer == null) {
-  await AuthStorage.clearToken();
+    if (customer == null) {
+      await AuthStorage.clearToken();
+      access.setLoggedOut();
 
-  setState(() {
-    _customer = null;
-    _loggedIn = false;
-    _loading = false;
-  });
-  return;
-}
+      setState(() {
+        _customer = null;
+        _loggedIn = false;
+        _loading = false;
+      });
+      return;
+    }
 
-setState(() {
-  _customer = customer;
-  _loggedIn = true;
-  _loading = false;
-});
-} catch (e) {
-  await AuthStorage.clearToken();
+    final customerService = ShopifyCustomerService(
+      shopDomain: ShopifyStorefrontApi.shopDomain,
+      storefrontAccessToken: ShopifyStorefrontApi.publicStorefrontToken,
+    );
 
-  setState(() {
-    _customer = null;
-    _loggedIn = false;
-    _loading = false;
-  });
-}
+    await access.loadCustomerAccess(
+      gastroCheck: () => customerService.isGastroCustomer(
+        customerAccessToken: token,
+      ),
+    );
+
+    setState(() {
+      _customer = customer;
+      _loggedIn = true;
+      _loading = false;
+    });
+  } catch (e) {
+    await AuthStorage.clearToken();
+    access.setLoggedOut();
+
+    setState(() {
+      _customer = null;
+      _loggedIn = false;
+      _loading = false;
+    });
+  }
 }
 
 Future<void> _logout() async {
@@ -3079,12 +3275,13 @@ Future<void> _logout() async {
 
   if (!mounted) return;
 
+  context.read<CustomerAccessModel>().setLoggedOut();
+
   setState(() {
     _customer = null;
     _loggedIn = false;
+    _loading = false;
   });
-
-   _loadCustomer();
 
   ScaffoldMessenger.of(context).showSnackBar(
     const SnackBar(content: Text('Du bist ausgeloggt')),
@@ -3108,14 +3305,27 @@ Future<Product?> _findProductByGid(String gid) async {
 
   return null;
 }
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const _TopBar(title: 'MORE', onCart: null),
-      body: ListView(
+@override
+Widget build(BuildContext context) {
+  final access = context.watch<CustomerAccessModel>();
+
+
+ if (_loading) {
+    return const Scaffold(
+      appBar: _TopBar(title: 'MORE', onCart: null),
+      body: Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+  }
+
+
+  return Scaffold(
+    appBar: const _TopBar(title: 'MORE', onCart: null),
+    body: ListView(
         children: [
       
-if (_customer != null) ...[
+if (!_loading && _customer != null) ...[
   Container(
     width: double.infinity,
     padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
@@ -3132,12 +3342,9 @@ if (_customer != null) ...[
 ],
 
 
-       if (_loading)
-      const Padding(
-        padding: EdgeInsets.all(16),
-        child: Center(child: CircularProgressIndicator()),
-      )
-    else if (_customer != null)
+      
+    
+  if (_customer != null)
       Container(
         margin: const EdgeInsets.all(16),
         padding: const EdgeInsets.all(16),
@@ -3349,127 +3556,181 @@ ScaffoldMessenger.of(context).showSnackBar(
   },
 ),
 
-if (_loggedIn) ...[
-  ListTile(
-    leading: const Icon(Icons.person),
-    iconColor: Colors.white,
-    textColor: Colors.white,
-    title: const Text(
-      'Mein Konto',
-      style: TextStyle(color: Colors.white),
+const Divider(),
+
+if (!_loading) ...[
+  if (_loggedIn && access.isGastro)
+    ListTile(
+      leading: const Icon(Icons.storefront_outlined),
+      iconColor: const Color(0xFFDFC876),
+      textColor: Colors.white,
+      title: const Text(
+        'Grosskunden & Gastronomie',
+        style: TextStyle(color: Colors.white),
+      ),
+      subtitle: const Text(
+        'Grosspackungen, B2B-Angebote und Kauf auf Rechnung',
+        style: TextStyle(color: Colors.white70),
+      ),
+      trailing: const Icon(
+        Icons.chevron_right,
+        color: Colors.white54,
+      ),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const GastroPage(),
+          ),
+        );
+      },
     ),
-    trailing: const Icon(
-      Icons.chevron_right,
-      color: Colors.white54,
+
+  if (_loggedIn) ...[
+    ListTile(
+      leading: const Icon(Icons.person),
+      iconColor: Colors.white,
+      textColor: Colors.white,
+      title: const Text(
+        'Mein Konto',
+        style: TextStyle(color: Colors.white),
+      ),
+      trailing: const Icon(
+        Icons.chevron_right,
+        color: Colors.white54,
+      ),
+      onTap: () {
+        final auth = ShopifyAuthService(
+          shopDomain: ShopifyStorefrontApi.shopDomain,
+          storefrontAccessToken: ShopifyStorefrontApi.publicStorefrontToken,
+        );
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AccountPage(auth: auth),
+          ),
+        );
+      },
     ),
-    onTap: () {
-      final auth = ShopifyAuthService(
-        shopDomain: ShopifyStorefrontApi.shopDomain,
-        storefrontAccessToken: ShopifyStorefrontApi.publicStorefrontToken,
-      );
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => AccountPage(auth: auth),
-        ),
-      );
-    },
-  ),
-
-
-
-
-  ListTile(
-    leading: const Icon(Icons.logout),
-    iconColor: Colors.white,
-    textColor: Colors.white,
-    title: const Text(
-      'Ausloggen',
-      style: TextStyle(color: Colors.white),
+    ListTile(
+      leading: const Icon(Icons.logout),
+      iconColor: Colors.white,
+      textColor: Colors.white,
+      title: const Text(
+        'Ausloggen',
+        style: TextStyle(color: Colors.white),
+      ),
+      trailing: const Icon(
+        Icons.chevron_right,
+        color: Colors.white54,
+      ),
+      onTap: _logout,
     ),
-    trailing: const Icon(
-      Icons.chevron_right,
-      color: Colors.white54,
+  ] else ...[
+    ListTile(
+      leading: const Icon(Icons.login),
+      iconColor: Colors.white,
+      textColor: Colors.white,
+      title: const Text(
+        'Privatkunden Login',
+        style: TextStyle(color: Colors.white),
+      ),
+      trailing: const Icon(
+        Icons.chevron_right,
+        color: Colors.white54,
+      ),
+      onTap: () async {
+        final auth = ShopifyAuthService(
+          shopDomain: ShopifyStorefrontApi.shopDomain,
+          storefrontAccessToken: ShopifyStorefrontApi.publicStorefrontToken,
+        );
+
+        final ok = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => LoginPage(auth: auth),
+          ),
+        );
+
+        if (ok == true && context.mounted) {
+          _loadCustomer();
+        }
+      },
     ),
-    onTap: _logout,
-  ),
-] else ...[
+    ListTile(
+      leading: const Icon(Icons.person_outline),
+      iconColor: Colors.white,
+      textColor: Colors.white,
+      title: const Text(
+        'Konto erstellen',
+        style: TextStyle(color: Colors.white),
+      ),
+      trailing: const Icon(
+        Icons.chevron_right,
+        color: Colors.white54,
+      ),
+      onTap: () async {
+        final auth = ShopifyAuthService(
+          shopDomain: ShopifyStorefrontApi.shopDomain,
+          storefrontAccessToken: ShopifyStorefrontApi.publicStorefrontToken,
+        );
 
-  /// LOGIN
-  ListTile(
-    leading: const Icon(Icons.login),
-    iconColor: Colors.white,
-    textColor: Colors.white,
-    title: const Text(
-      'Login',
-      style: TextStyle(color: Colors.white),
+        final ok = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => RegisterPage(
+              auth: auth,
+              isGastro: false,
+            ),
+          ),
+        );
+
+        if (ok == true && mounted) {
+          _loadCustomer();
+        }
+      },
     ),
-    trailing: const Icon(
-      Icons.chevron_right,
-      color: Colors.white54,
+    ListTile(
+      leading: const Icon(Icons.storefront_outlined),
+      iconColor: Color(0xFFDFC876),
+      textColor: Colors.white,
+      title: const Text(
+        'Gastro / Großkunde registrieren',
+        style: TextStyle(color: Colors.white),
+      ),
+     
+      trailing: const Icon(
+        Icons.chevron_right,
+        color: Colors.white54,
+      ),
+      onTap: () async {
+        final auth = ShopifyAuthService(
+          shopDomain: ShopifyStorefrontApi.shopDomain,
+          storefrontAccessToken: ShopifyStorefrontApi.publicStorefrontToken,
+        );
+
+        final ok = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => RegisterPage(
+              auth: auth,
+              isGastro: true,
+            ),
+          ),
+        );
+
+        if (ok == true && mounted) {
+          _loadCustomer();
+        }
+      },
     ),
-    onTap: () async {
-
-      final auth = ShopifyAuthService(
-        shopDomain: ShopifyStorefrontApi.shopDomain,
-        storefrontAccessToken: ShopifyStorefrontApi.publicStorefrontToken,
-      );
-
-      final ok = await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(
-          builder: (_) => LoginPage(auth: auth),
-        ),
-      );
-
-    if (ok == true && context.mounted) {
-  _loadCustomer();
-}
-
-    },
-  ),
-
-  /// REGISTER
-  ListTile(
-    leading: const Icon(Icons.person_outline),
-    iconColor: Colors.white,
-    textColor: Colors.white,
-    title: const Text(
-      'Konto erstellen',
-      style: TextStyle(color: Colors.white),
-    ),
-    trailing: const Icon(
-      Icons.chevron_right,
-      color: Colors.white54,
-    ),
-    onTap: () async {
-
-      final auth = ShopifyAuthService(
-        shopDomain: ShopifyStorefrontApi.shopDomain,
-        storefrontAccessToken: ShopifyStorefrontApi.publicStorefrontToken,
-      );
-
-      final ok = await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(
-          builder: (_) => RegisterPage(auth: auth),
-        ),
-      );
-
-      if (ok == true) {
-        _loadCustomer();
-      }
-
-    },
-  ),
-
+  ],
 ]
+
         
         
-        
-        
-        
+               
         ],
 
       ),

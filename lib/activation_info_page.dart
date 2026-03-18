@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'shopify_auth_service.dart';
 import 'auth_storage.dart';
+import 'main.dart';
 
 class ActivationInfoPage extends StatefulWidget {
   final String email;
@@ -36,8 +37,13 @@ class _ActivationInfoPageState extends State<ActivationInfoPage> {
 
       await AuthStorage.saveToken(token);
 
-      if (!mounted) return;
-      Navigator.pop(context, true);
+ if (!mounted) return;
+Navigator.of(context).pushAndRemoveUntil(
+  MaterialPageRoute(builder: (_) => const MainShell()),
+  (route) => false,
+);
+
+
     } catch (e) {
       setState(() {
         _error =
@@ -50,43 +56,47 @@ class _ActivationInfoPageState extends State<ActivationInfoPage> {
     }
   }
 
-  void _closeFlow() {
-    Navigator.pop(context, true);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        surfaceTintColor: Colors.black,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        title: const Text(
-          'E-Mail bestätigen',
-          style: TextStyle(color: Colors.white),
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
+     appBar: AppBar(
+  backgroundColor: Colors.black,
+  surfaceTintColor: Colors.black,
+  elevation: 0,
+  automaticallyImplyLeading: false,
+  leading: IconButton(
+    icon: const Icon(Icons.arrow_back, color: Colors.white),
+    onPressed: () {
+    Navigator.of(context).pushAndRemoveUntil(
+  MaterialPageRoute(builder: (_) => const MainShell()),
+  (route) => false,
+);
+    },
+  ),
+  title: const Text(
+    'E-Mail bestätigt',
+    style: TextStyle(color: Colors.white),
+  ),
+),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
-            const Text(
-              'Fast geschafft',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 26,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.2,
-              ),
-            ),
+   //         const Text(
+     //         'Herzlich Willkommen',
+       //       style: TextStyle(
+         //       color: Colors.white,
+          //      fontSize: 26,
+            //    fontWeight: FontWeight.w800,
+              //  letterSpacing: 0.2,
+          //    ),
+          //  ),
             const SizedBox(height: 6),
-            const Text(
-              'Bitte bestätige jetzt dein Konto über den Link in deiner E-Mail.',
-              style: TextStyle(color: Colors.white70, fontSize: 14),
-            ),
+       //     const Text(
+         //     'Wir haben Dir eine Bestätigungs Mail gesendet.',
+           //   style: TextStyle(color: Colors.white70, fontSize: 14),
+         //   ),
             const SizedBox(height: 16),
 
             if (_error != null) ...[
@@ -153,7 +163,7 @@ class _ActivationInfoPageState extends State<ActivationInfoPage> {
                   const SizedBox(height: 10),
 
                   Text(
-                    'Wir haben eine Aktivierungs-E-Mail an\n${widget.email}\ngesendet.',
+                    'Wir haben eine Bestätigungs E-Mail an\n${widget.email}\ngesendet.',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Colors.white70,
@@ -163,16 +173,7 @@ class _ActivationInfoPageState extends State<ActivationInfoPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  const Text(
-                    'Öffne dein Postfach, bestätige deine Adresse und komme danach zurück in die App.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 22),
+                   const SizedBox(height: 22),
 
                   SizedBox(
                     width: double.infinity,
@@ -196,27 +197,9 @@ class _ActivationInfoPageState extends State<ActivationInfoPage> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Text(
-                              'Ich habe bestätigt – jetzt einloggen',
+                              'Bestätigt – Zum GastroSortiment',
                               style: TextStyle(fontWeight: FontWeight.w800),
                             ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: OutlinedButton(
-                      onPressed: _loading ? null : _closeFlow,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white24),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: const Text('Später'),
                     ),
                   ),
                 ],
