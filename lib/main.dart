@@ -767,14 +767,25 @@ query CollectionProducts($handle: String!, $first: Int!) {
 /// MainShell
 /// =======================
 class MainShell extends StatefulWidget {
-  const MainShell({super.key});
+  final int initialIndex;
+
+  const MainShell({
+    super.key,
+    this.initialIndex = 0,
+  });
 
   @override
   State<MainShell> createState() => _MainShellState();
 }
 
 class _MainShellState extends State<MainShell> {
-  int _index = 0;
+  late int _index;
+
+  @override
+  void initState() {
+    super.initState();
+    _index = widget.initialIndex;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -3633,7 +3644,7 @@ if (!_loading) ...[
       iconColor: Colors.white,
       textColor: Colors.white,
       title: const Text(
-        'Privatkunden Login',
+        'Login',
         style: TextStyle(color: Colors.white),
       ),
       trailing: const Icon(
@@ -3653,9 +3664,30 @@ if (!_loading) ...[
           ),
         );
 
-        if (ok == true && context.mounted) {
-          _loadCustomer();
-        }
+       if (ok == true && context.mounted) {
+  final token = await AuthStorage.readToken();
+
+  bool isGastro = false;
+
+  if (token != null && token.isNotEmpty) {
+    final customerService = ShopifyCustomerService(
+      shopDomain: ShopifyStorefrontApi.shopDomain,
+      storefrontAccessToken: ShopifyStorefrontApi.publicStorefrontToken,
+    );
+
+    isGastro = await customerService.isGastroCustomer(
+      customerAccessToken: token,
+    );
+  }
+
+  Navigator.pushAndRemoveUntil(
+    context,
+    MaterialPageRoute(
+      builder: (_) => const MainShell(initialIndex: 0),
+    ),
+    (route) => false,
+  );
+}
       },
     ),
     ListTile(
@@ -3687,8 +3719,14 @@ if (!_loading) ...[
         );
 
         if (ok == true && mounted) {
-          _loadCustomer();
-        }
+  Navigator.pushAndRemoveUntil(
+    context,
+    MaterialPageRoute(
+      builder: (_) => const MainShell(initialIndex: 0),
+    ),
+    (route) => false,
+  );
+}
       },
     ),
     ListTile(
@@ -3696,7 +3734,7 @@ if (!_loading) ...[
       iconColor: Color(0xFFDFC876),
       textColor: Colors.white,
       title: const Text(
-        'Gastro / Großkunde registrieren',
+        'Gastro / Grosskunde registrieren',
         style: TextStyle(color: Colors.white),
       ),
      
@@ -3720,9 +3758,15 @@ if (!_loading) ...[
           ),
         );
 
-        if (ok == true && mounted) {
-          _loadCustomer();
-        }
+       if (ok == true && mounted) {
+  Navigator.pushAndRemoveUntil(
+    context,
+    MaterialPageRoute(
+      builder: (_) => const MainShell(initialIndex: 0),
+    ),
+    (route) => false,
+  );
+}
       },
     ),
   ],

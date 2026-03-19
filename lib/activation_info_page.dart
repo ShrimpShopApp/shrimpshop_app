@@ -197,7 +197,7 @@ Navigator.of(context).pushAndRemoveUntil(
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Text(
-                              'Bestätigt – Zum GastroSortiment',
+                              'Bestätigt – Welcome!',
                               style: TextStyle(fontWeight: FontWeight.w800),
                             ),
                     ),

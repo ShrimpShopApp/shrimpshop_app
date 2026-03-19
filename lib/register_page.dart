@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'shopify_auth_service.dart';
 import 'auth_storage.dart';
-import 'activation_info_page.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -125,6 +124,45 @@ Future<void> _notifyGastroRegistration({
   }
 }
 
+Future<void> _notifyMobileAppRegistration({
+  required String customerAccessToken,
+}) async {
+  final uri = Uri.parse(
+    'https://swissprimetaste.ch/api/tag-mobileapp-customer.php',
+  );
+
+  debugPrint('MOBILEAPP URL: $uri');
+
+  final response = await http.post(
+    uri,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: jsonEncode({
+      'customerAccessToken': customerAccessToken,
+    }),
+  );
+
+  debugPrint('MOBILEAPP status: ${response.statusCode}');
+  debugPrint('MOBILEAPP body: ${response.body}');
+
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    throw Exception(
+      'MobileApp-Tag konnte nicht gesetzt werden. '
+      'HTTP ${response.statusCode}: ${response.body}',
+    );
+  }
+
+  final data = jsonDecode(response.body);
+
+  if (data is Map && data['ok'] != true) {
+    throw Exception(
+      data['error']?.toString() ?? 'Unbekannter Fehler beim MobileApp-Tagging.',
+    );
+  }
+}
+
+
 Future<void> _submit() async {
   FocusScope.of(context).unfocus();
 
@@ -154,27 +192,23 @@ Future<void> _submit() async {
 
     await AuthStorage.saveToken(accessToken);
 
-    // ✅ SCHRITT 6: nur bei Gastro-Registrierung Server informieren
-    if (widget.isGastro) {
-      await _notifyGastroRegistration(
-        email: email,
-        firstName: firstName,
-        lastName: lastName,
-      );
-    }
+// ✅ Server informieren
+if (widget.isGastro) {
+  await _notifyGastroRegistration(
+    email: email,
+    firstName: firstName,
+    lastName: lastName,
+  );
+} else {
+  await _notifyMobileAppRegistration(
+    customerAccessToken: accessToken,
+  );
+}
 
-    if (!mounted) return;
+if (!mounted) return;
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ActivationInfoPage(
-          email: email,
-          auth: widget.auth,
-          password: pw,
-        ),
-      ),
-    );
+Navigator.pop(context, true);
+
   } catch (e) {
     setState(() {
       _error = e.toString().replaceFirst('Exception: ', '');

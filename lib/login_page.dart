@@ -91,13 +91,29 @@ class _LoginPageState extends State<LoginPage> {
 
       if (!mounted) return;
       Navigator.pop(context, true);
-    } catch (e) {
-      if (!mounted) return;
+   
+   } catch (e) {
+  if (!mounted) return;
 
-      setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
-      });
-    } finally {
+  final msg = e.toString().toLowerCase();
+
+  String friendlyError = 'Login fehlgeschlagen.';
+
+  if (msg.contains('unidentified customer')) {
+    friendlyError = 'E-Mail oder Passwort ist falsch.';
+  } else if (msg.contains('invalid')) {
+    friendlyError = 'Ungültige Eingabe.';
+  } else if (msg.contains('network')) {
+    friendlyError = 'Netzwerkfehler. Bitte prüfe deine Verbindung.';
+  }
+
+  setState(() {
+    _error = friendlyError;
+  });
+}
+   
+   
+    finally {
       if (mounted) {
         setState(() => _loading = false);
       }
