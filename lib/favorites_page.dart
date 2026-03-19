@@ -6,13 +6,15 @@ class FavoritesPage extends StatelessWidget {
   final Future<void> Function(FavoriteItem item)? onOpenProduct;
   final Future<void> Function(FavoriteItem item)? onAddToCart;
   final VoidCallback? onOpenCart;
+    final void Function(int index)? onNavigateTab;
 
   const FavoritesPage({
-    super.key,
-    this.onOpenProduct,
-    this.onAddToCart,
-    this.onOpenCart,
-  });
+  super.key,
+  this.onOpenProduct,
+  this.onAddToCart,
+  this.onOpenCart,
+  this.onNavigateTab,
+});
 
   @override
   Widget build(BuildContext context) {
@@ -21,16 +23,16 @@ class FavoritesPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFF000000),
-    appBar: AppBar(
-  title: const Text('Meine Favoriten'),
-  actions: [
-    IconButton(
-      tooltip: 'Warenkorb',
-      onPressed: onOpenCart,
-      icon: const Icon(Icons.shopping_cart_outlined),
-    ),
-  ],
-),
+      appBar: AppBar(
+        title: const Text('Meine Favoriten'),
+        actions: [
+          IconButton(
+            tooltip: 'Warenkorb',
+            onPressed: onOpenCart,
+            icon: const Icon(Icons.shopping_cart_outlined),
+          ),
+        ],
+      ),
       body: items.isEmpty
           ? const _EmptyFavoritesView()
           : ListView.separated(
@@ -161,7 +163,9 @@ class FavoritesPage extends StatelessWidget {
                           IconButton(
                             tooltip: 'Entfernen',
                             onPressed: () async {
-                              await context.read<FavoritesModel>().removeById(item.id);
+                              await context
+                                  .read<FavoritesModel>()
+                                  .removeById(item.id);
 
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -184,6 +188,42 @@ class FavoritesPage extends StatelessWidget {
                 );
               },
             ),
+    bottomNavigationBar: BottomNavigationBar(
+  backgroundColor: const Color(0xFFDBDBDB),
+  currentIndex: 3,
+  selectedItemColor: Colors.black,
+  unselectedItemColor: Colors.black54,
+  type: BottomNavigationBarType.fixed,
+  onTap: (index) {
+    if (index == 3) {
+      Navigator.pop(context);
+      return;
+    }
+
+    if (onNavigateTab != null) {
+      Navigator.pop(context);
+      onNavigateTab!(index);
+    }
+  },
+  items: const [
+    BottomNavigationBarItem(
+      icon: Icon(Icons.home_outlined),
+      label: 'Home',
+    ),
+    BottomNavigationBarItem(
+      icon: Icon(Icons.info_outline),
+      label: 'Story',
+    ),
+    BottomNavigationBarItem(
+      icon: Icon(Icons.search),
+      label: 'Suche',
+    ),
+    BottomNavigationBarItem(
+      icon: Icon(Icons.more_horiz),
+      label: 'Mehr',
+    ),
+  ],
+),
     );
   }
 }

@@ -3,7 +3,16 @@ import 'package:provider/provider.dart';
 import 'favorites_model.dart';
 
 class FavoritesPage extends StatelessWidget {
-  const FavoritesPage({super.key});
+  final Future<void> Function(FavoriteItem item)? onOpenProduct;
+  final Future<void> Function(FavoriteItem item)? onAddToCart;
+  final VoidCallback? onOpenCart;
+
+  const FavoritesPage({
+    super.key,
+    this.onOpenProduct,
+    this.onAddToCart,
+    this.onOpenCart,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -12,9 +21,16 @@ class FavoritesPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFF000000),
-      appBar: AppBar(
-        title: const Text('Meine Favoriten'),
-      ),
+    appBar: AppBar(
+  title: const Text('Meine Favoriten'),
+  actions: [
+    IconButton(
+      tooltip: 'Warenkorb',
+      onPressed: onOpenCart,
+      icon: const Icon(Icons.shopping_cart_outlined),
+    ),
+  ],
+),
       body: items.isEmpty
           ? const _EmptyFavoritesView()
           : ListView.separated(
@@ -29,20 +45,37 @@ class FavoritesPage extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: item.imageUrl.isNotEmpty
-                              ? Image.network(
-                                  item.imageUrl,
-                                  width: 84,
-                                  height: 84,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) => Container(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: onOpenProduct == null
+                        ? null
+                        : () async {
+                            await onOpenProduct!(item);
+                          },
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: item.imageUrl.isNotEmpty
+                                ? Image.network(
+                                    item.imageUrl,
+                                    width: 84,
+                                    height: 84,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => Container(
+                                      width: 84,
+                                      height: 84,
+                                      color: Colors.grey.shade900,
+                                      child: const Icon(
+                                        Icons.image_not_supported,
+                                        color: Colors.white54,
+                                      ),
+                                    ),
+                                  )
+                                : Container(
                                     width: 84,
                                     height: 84,
                                     color: Colors.grey.shade900,
@@ -51,98 +84,101 @@ class FavoritesPage extends StatelessWidget {
                                       color: Colors.white54,
                                     ),
                                   ),
-                                )
-                              : Container(
-                                  width: 84,
-                                  height: 84,
-                                  color: Colors.grey.shade900,
-                                  child: const Icon(
-                                    Icons.image_not_supported,
-                                    color: Colors.white54,
-                                  ),
-                                ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              if ((item.subtitle ?? '').trim().isNotEmpty) ...[
-                                const SizedBox(height: 4),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
                                 Text(
-                                  item.subtitle!,
+                                  item.title,
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.white70,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
                                   ),
                                 ),
-                              ],
-                              const SizedBox(height: 8),
-                              Text(
-                                item.priceText,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFFDFC876),
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              OutlinedButton(
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.white,
-                                  side: const BorderSide(
+                                if ((item.subtitle ?? '').trim().isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    item.subtitle!,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.white70,
+                                    ),
+                                  ),
+                                ],
+                                const SizedBox(height: 8),
+                                Text(
+                                  item.priceText,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
                                     color: Color(0xFFDFC876),
                                   ),
                                 ),
-                                onPressed: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Produktdetail folgt als nächster Schritt',
+                                const SizedBox(height: 10),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [
+                                    OutlinedButton(
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: Colors.white,
+                                        side: const BorderSide(
+                                          color: Color(0xFFDFC876),
+                                        ),
                                       ),
-                                      duration: Duration(seconds: 2),
+                                      onPressed: onOpenProduct == null
+                                          ? null
+                                          : () async {
+                                              await onOpenProduct!(item);
+                                            },
+                                      child: const Text('Ansehen'),
                                     ),
-                                  );
-                                },
-                                child: const Text('Ansehen'),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: 'Entfernen',
-                          onPressed: () async {
-                            await context
-                                .read<FavoritesModel>()
-                                .removeById(item.id);
-
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Aus Favoriten entfernt'),
-                                  duration: Duration(seconds: 2),
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor:
+                                            const Color(0xFFDFC876),
+                                        foregroundColor: Colors.black,
+                                      ),
+                                      onPressed: onAddToCart == null
+                                          ? null
+                                          : () async {
+                                              await onAddToCart!(item);
+                                            },
+                                      child: const Text('In den Warenkorb'),
+                                    ),
+                                  ],
                                 ),
-                              );
-                            }
-                          },
-                          icon: const Icon(
-                            Icons.favorite,
-                            color: Color(0xFFDFC876),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                          IconButton(
+                            tooltip: 'Entfernen',
+                            onPressed: () async {
+                              await context.read<FavoritesModel>().removeById(item.id);
+
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Aus Favoriten entfernt'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              }
+                            },
+                            icon: const Icon(
+                              Icons.favorite,
+                              color: Color(0xFFDFC876),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 );

@@ -722,6 +722,15 @@ query CollectionProducts($handle: String!, $first: Int!) {
     return edges.map(_mapProductEdge).toList();
   }
 
+  static Future<Set<String>> fetchGastroProductIds() async {
+    final products = await fetchProductsByCollection(
+      handle: gastroCollectionHandle,
+      first: 250,
+    );
+
+    return products.map((p) => p.gid).toSet();
+  }
+
   static Product _mapProductEdge(Map<String, dynamic> edge) {
     final node = edge['node'] as Map<String, dynamic>;
     final img = node['featuredImage'] as Map<String, dynamic>?;
@@ -791,12 +800,13 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
    final pages = [
   const HomeCategoriesTab(),
-  const ProductsTab(),
+  
  // RecipesPage(), // ✅ NEU: Rezepte Tab
   const InfoTab(
     title: 'Story',
     url: 'https://shrimpshop.ch/pages/unsere-story-team',
   ),
+  const ProductsTab(),
   const MoreTab(),
 ];
 
@@ -810,19 +820,18 @@ class _MainShellState extends State<MainShell> {
 
         onTap: (i) => setState(() => _index = i),
         type: BottomNavigationBarType.fixed,
-       items: const [
+      items: const [
   BottomNavigationBarItem(
     icon: Icon(Icons.home_outlined),
     label: 'Home',
   ),
   BottomNavigationBarItem(
-    icon: Icon(Icons.search),
-    label: 'Suche',
-  ),
- // BottomNavigationBarItem(    icon: Icon(Icons.restaurant_menu),    label: 'Rezepte',  ),
-  BottomNavigationBarItem(
     icon: Icon(Icons.info_outline),
     label: 'Story',
+  ),
+  BottomNavigationBarItem(
+    icon: Icon(Icons.search),
+    label: 'Suche',
   ),
   BottomNavigationBarItem(
     icon: Icon(Icons.more_horiz),
@@ -862,16 +871,31 @@ final PageController _productPageController = PageController(
 
   late Future<List<ShopCollection>> _future;
 
-  late Future<List<Product>> _futureRandomProducts;
+  Future<List<Product>> _futureRandomProducts = Future.value([]);
 
-  
+  Set<String> _gastroProductIds = {};
 
-  Future<List<Product>> _loadRandomProducts() async {
-    final list = await ShopifyStorefrontApi.fetchProducts(first: 60);
-    list.shuffle(Random()); // ✅ random Reihenfolge
-    return list.take(10).toList(); // ✅ nur 10 fürs Carousel
+ Future<List<Product>> _loadRandomProducts() async {
+  final list = await ShopifyStorefrontApi.fetchProducts(first: 60);
+
+  if (!_isGastro && _gastroProductIds.isNotEmpty) {
+    list.removeWhere((p) => _gastroProductIds.contains(p.gid));
   }
 
+  list.shuffle(Random());
+  return list.take(10).toList();
+}
+
+
+Future<void> _loadGastroProductIds() async {
+  final ids = await ShopifyStorefrontApi.fetchGastroProductIds();
+
+  if (!mounted) return;
+
+  setState(() {
+    _gastroProductIds = ids;
+  });
+}
 
  Future<void> _loadLoginState() async {
   final token = await AuthStorage.readToken();
@@ -927,12 +951,19 @@ _productPage = 1.0;
 });
 
     _future = ShopifyStorefrontApi.fetchAppNavigation();
-    _futureRandomProducts = _loadRandomProducts(); // ✅ neu
-    _futureGastroProducts = ShopifyStorefrontApi.fetchProductsByCollection(
+_futureGastroProducts = ShopifyStorefrontApi.fetchProductsByCollection(
   handle: ShopifyStorefrontApi.gastroCollectionHandle,
   first: 60,
 );
-    _loadLoginState();
+_loadLoginState().then((_) async {
+  await _loadGastroProductIds();
+
+  if (!mounted) return;
+
+  setState(() {
+    _futureRandomProducts = _loadRandomProducts();
+  });
+});
 
     _carouselTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
   if (_pageController.hasClients) {
@@ -1226,6 +1257,7 @@ Widget _buildGastroCollectionTop() {
 return RefreshIndicator(
   onRefresh: () async {
   await _loadLoginState();
+  await _loadGastroProductIds();
 
   setState(() {
     _future = ShopifyStorefrontApi.fetchAppNavigation();
@@ -1669,14 +1701,50 @@ class ProductsTab extends StatefulWidget {
 
 class _ProductsTabState extends State<ProductsTab> {
   late Future<List<Product>> _future;
-  String _query = '';
-  SortMode _sort = SortMode.newest;
-
+Set<String> _gastroProductIds = {};
+bool _isGastro = false;
+String _query = '';
+SortMode _sort = SortMode.newest;
   @override
-  void initState() {
-    super.initState();
-    _future = ShopifyStorefrontApi.fetchProducts(first: 60);
+void initState() {
+  super.initState();
+  _future = Future.value([]);
+  _loadAccessAndProducts();
+}
+
+Future<void> _loadAccessAndProducts() async {
+  final token = await AuthStorage.readToken();
+
+  bool isGastro = false;
+
+  if (token != null && token.isNotEmpty) {
+    try {
+      final customerService = ShopifyCustomerService(
+        shopDomain: ShopifyStorefrontApi.shopDomain,
+        storefrontAccessToken: ShopifyStorefrontApi.publicStorefrontToken,
+      );
+
+      isGastro = await customerService.isGastroCustomer(
+        customerAccessToken: token,
+      );
+    } catch (_) {}
   }
+
+  final gastroIds = await ShopifyStorefrontApi.fetchGastroProductIds();
+  final allProducts = await ShopifyStorefrontApi.fetchProducts(first: 60);
+
+  if (!mounted) return;
+
+  setState(() {
+    _isGastro = isGastro;
+    _gastroProductIds = gastroIds;
+    _future = Future.value(
+      isGastro
+          ? allProducts
+          : allProducts.where((p) => !_gastroProductIds.contains(p.gid)).toList(),
+    );
+  });
+}
 
   void _openCart() => Navigator.push(
     context,
@@ -1735,17 +1803,29 @@ class _ProductsTabState extends State<ProductsTab> {
           }
 
           return RefreshIndicator(
-            onRefresh: () async {
-              setState(
-                () => _future = ShopifyStorefrontApi.fetchProducts(first: 60),
-              );
-            },
-            child: ListView(
-              padding: const EdgeInsets.all(12),
-              children: [
-               
-                const SizedBox(height: 12),
-                GridView.builder(
+  onRefresh: () async {
+    await _loadAccessAndProducts();
+  },
+  child: ListView(
+    padding: const EdgeInsets.all(12),
+    children: [
+      TextField(
+        onChanged: (v) => setState(() => _query = v),
+        style: const TextStyle(color: Colors.black),
+        decoration: InputDecoration(
+          hintText: 'Suche',
+          prefixIcon: const Icon(Icons.search),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+      const SizedBox(height: 12),
+      GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: items.length,
@@ -3412,13 +3492,22 @@ Consumer<FavoritesModel>(
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => FavoritesPage(
+           builder: (_) => FavoritesPage(
   onOpenCart: () {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => CartPage(),
+        builder: (_) => const CartPage(),
       ),
+    );
+  },
+  onNavigateTab: (index) {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MainShell(initialIndex: index),
+      ),
+      (route) => false,
     );
   },
   onOpenProduct: (item) async {
