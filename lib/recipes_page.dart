@@ -64,7 +64,7 @@ class _RecipesPageState extends State<RecipesPage> {
 
           return ListView.separated(
             itemCount: recipes.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
+            separatorBuilder: (_, _) => const Divider(height: 1),
             itemBuilder: (context, i) {
               final r = recipes[i] as Map<String, dynamic>;
               final title = (r['title'] ?? '').toString();

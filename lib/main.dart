@@ -1626,39 +1626,7 @@ class _ProductListPageState extends State<ProductListPage> {
           return ListView(
             padding: const EdgeInsets.all(12),
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      onChanged: (v) => setState(() => _query = v),
-                      decoration: const InputDecoration(
-                        prefixIcon: Icon(Icons.search),
-                        hintText: 'Suche',
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  PopupMenuButton<SortMode>(
-                    icon: const Icon(Icons.tune),
-                    onSelected: (v) => setState(() => _sort = v),
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(
-                        value: SortMode.newest,
-                        child: Text('Neueste'),
-                      ),
-                      PopupMenuItem(value: SortMode.az, child: Text('A–Z')),
-                      PopupMenuItem(
-                        value: SortMode.priceAsc,
-                        child: Text('Preis ↑'),
-                      ),
-                      PopupMenuItem(
-                        value: SortMode.priceDesc,
-                        child: Text('Preis ↓'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+            
               const SizedBox(height: 12),
               GridView.builder(
                 shrinkWrap: true,
@@ -1775,39 +1743,7 @@ class _ProductsTabState extends State<ProductsTab> {
             child: ListView(
               padding: const EdgeInsets.all(12),
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        onChanged: (v) => setState(() => _query = v),
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.search),
-                          hintText: 'Suche',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    PopupMenuButton<SortMode>(
-                      icon: const Icon(Icons.tune),
-                      onSelected: (v) => setState(() => _sort = v),
-                      itemBuilder: (_) => const [
-                        PopupMenuItem(
-                          value: SortMode.newest,
-                          child: Text('Neueste'),
-                        ),
-                        PopupMenuItem(value: SortMode.az, child: Text('A–Z')),
-                        PopupMenuItem(
-                          value: SortMode.priceAsc,
-                          child: Text('Preis ↑'),
-                        ),
-                        PopupMenuItem(
-                          value: SortMode.priceDesc,
-                          child: Text('Preis ↓'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+               
                 const SizedBox(height: 12),
                 GridView.builder(
                   shrinkWrap: true,
@@ -4227,7 +4163,7 @@ class _NewsCarouselWidgetState extends State<NewsCarouselWidget> {
   },
 
   // ❌ Falls Bild nicht lädt → Fallback
-  errorBuilder: (_, __, ___) {
+  errorBuilder: (_, _, _) {
     return Image.asset(
       "assets/news_banner.jpg", // dein Fallback Bild
       fit: BoxFit.cover,
