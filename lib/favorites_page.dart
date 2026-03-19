@@ -5,11 +5,13 @@ import 'favorites_model.dart';
 class FavoritesPage extends StatelessWidget {
   final Future<void> Function(FavoriteItem item)? onOpenProduct;
   final Future<void> Function(FavoriteItem item)? onAddToCart;
+  final VoidCallback? onOpenCart;
 
   const FavoritesPage({
     super.key,
     this.onOpenProduct,
     this.onAddToCart,
+    this.onOpenCart,
   });
 
   @override
@@ -19,9 +21,16 @@ class FavoritesPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFF000000),
-      appBar: AppBar(
-        title: const Text('Meine Favoriten'),
-      ),
+    appBar: AppBar(
+  title: const Text('Meine Favoriten'),
+  actions: [
+    IconButton(
+      tooltip: 'Warenkorb',
+      onPressed: onOpenCart,
+      icon: const Icon(Icons.shopping_cart_outlined),
+    ),
+  ],
+),
       body: items.isEmpty
           ? const _EmptyFavoritesView()
           : ListView.separated(

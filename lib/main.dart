@@ -3413,7 +3413,15 @@ Consumer<FavoritesModel>(
           context,
           MaterialPageRoute(
             builder: (_) => FavoritesPage(
-              onOpenProduct: (item) async {
+  onOpenCart: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CartPage(),
+      ),
+    );
+  },
+  onOpenProduct: (item) async {
                 final product = await _findProductByGid(item.id);
 
                 if (!mounted) return;
