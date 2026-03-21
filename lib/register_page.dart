@@ -209,11 +209,25 @@ if (!mounted) return;
 
 Navigator.pop(context, true);
 
-  } catch (e) {
-    setState(() {
-      _error = e.toString().replaceFirst('Exception: ', '');
-    });
-  } finally {
+} catch (e) {
+  final raw = e.toString().replaceFirst('Exception: ', '');
+  final msg = raw.toLowerCase();
+
+  String friendlyError = raw;
+
+  if (msg.contains('has already been taken') ||
+      msg.contains('already exists') ||
+      msg.contains('customer already exists') ||
+      msg.contains('bereits vergeben') ||
+      msg.contains('bereits vorhanden')) {
+    friendlyError =
+        'Diese E-Mail ist bereits in unserem Shop vorhanden. Bitte logge dich ein oder setze dein Passwort über „Passwort festlegen / vergessen?“ fest.';
+  }
+
+  setState(() {
+    _error = friendlyError;
+  });
+}finally {
     if (mounted) {
       setState(() => _loading = false);
     }
@@ -253,7 +267,18 @@ Navigator.pop(context, true);
                               : 'Schneller Checkout, exklusive App-Angebote und alles an einem Ort.',
                           style: const TextStyle(color: Colors.white70, fontSize: 14),
                         ),
-            const SizedBox(height: 16),
+if (!widget.isGastro) ...[
+  const SizedBox(height: 8),
+  const Text(
+    'Wenn du bereits Kunde im Shop bist, registriere dich bitte nicht erneut. Nutze stattdessen den Login und bei Bedarf „Passwort festlegen / vergessen?“.',
+    style: TextStyle(
+      color: Colors.white54,
+      fontSize: 13,
+      height: 1.4,
+    ),
+  ),
+],
+const SizedBox(height: 16),
 
             if (_error != null) ...[
               Container(

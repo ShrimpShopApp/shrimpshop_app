@@ -8,6 +8,13 @@ const Color kGastroText = Color.fromARGB(255, 223, 223, 223);
 const Color kGastroGold = Color(0xFFDFC876);
 const Color kGastroBorder = Color(0xFFEAEAEA);
 
+String _withAppFlag(String url) {
+  final uri = Uri.parse(url);
+  final params = Map<String, String>.from(uri.queryParameters);
+  params['app'] = '1';
+  return uri.replace(queryParameters: params).toString();
+}
+
 class GastroPage extends StatefulWidget {
   const GastroPage({super.key});
 
@@ -342,7 +349,7 @@ class _GastroProductWebViewPageState extends State<GastroProductWebViewPage> {
           onProgress: (p) => setState(() => _progress = p),
         ),
       )
-      ..loadRequest(Uri.parse(widget.url));
+      ..loadRequest(Uri.parse(_withAppFlag(widget.url)));
   }
 
   @override

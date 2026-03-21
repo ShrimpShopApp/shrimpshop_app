@@ -34,6 +34,13 @@ const kBg = Color.fromARGB(255, 0, 0, 0);
 const kCard = Color.fromARGB(255, 0, 0, 0);
 const kBorder = Color(0xFFEAEAEA);
 
+String _withAppFlag(String url) {
+  final uri = Uri.parse(url);
+  final params = Map<String, String>.from(uri.queryParameters);
+  params['app'] = '1';
+  return uri.replace(queryParameters: params).toString();
+}
+
 final CartModel cart = CartModel();
 
 Future<void> main() async {
@@ -2746,8 +2753,7 @@ DateTime _nextAllowedDate(DateTime start) {
   @override
   Widget build(BuildContext context) {
      final cart = context.watch<CartModel>();
-      final defaultAddressId =
-      _defaultAddress?['id']?.toString();
+      
 
       final items = cart.items;
     return Scaffold(
@@ -3083,6 +3089,8 @@ Card(
       note: note,
     );
 
+
+
     if (!mounted) return;
 
     Navigator.push(
@@ -3147,15 +3155,78 @@ class _CheckoutWebViewPageState extends State<CheckoutWebViewPage> {
   late final WebViewController _controller;
   int _progress = 0;
 
+  bool _isOnThankYouPage = false;
+  bool _redirectedToApp = false;
+
+  void _goHome() {
+    if (_redirectedToApp || !mounted) return;
+    _redirectedToApp = true;
+
+    cart.clear();
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const MainShell(initialIndex: 0),
+      ),
+      (route) => false,
+    );
+  }
+
+  bool _isThankYouUrl(String url) {
+    final u = url.toLowerCase();
+    return u.contains('/thank-you') || u.contains('/thank_you');
+  }
+
+  bool _isShopReturnUrl(String url) {
+    final u = url.toLowerCase();
+
+    return (u.startsWith('https://shrimpshop.ch/') ||
+            u.startsWith('http://shrimpshop.ch/')) &&
+        !_isThankYouUrl(u) &&
+        !u.contains('/checkouts/') &&
+        !u.contains('/cart');
+  }
+
   @override
   void initState() {
     super.initState();
+
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
-        NavigationDelegate(onProgress: (p) => setState(() => _progress = p)),
+        NavigationDelegate(
+          onProgress: (p) {
+            if (mounted) setState(() => _progress = p);
+          },
+          onPageStarted: (url) {
+            if (_isThankYouUrl(url)) {
+              _isOnThankYouPage = true;
+            }
+          },
+          onPageFinished: (url) {
+            if (_isThankYouUrl(url)) {
+              _isOnThankYouPage = true;
+            }
+          },
+          onNavigationRequest: (request) {
+            final url = request.url;
+
+            if (_isThankYouUrl(url)) {
+              _isOnThankYouPage = true;
+              return NavigationDecision.navigate;
+            }
+
+            if (_isOnThankYouPage && _isShopReturnUrl(url)) {
+              _goHome();
+              return NavigationDecision.prevent;
+            }
+
+            return NavigationDecision.navigate;
+          },
+        ),
       )
-      ..loadRequest(Uri.parse(widget.url));
+     ..loadRequest(Uri.parse(_withAppFlag(widget.url)));
   }
 
   @override
@@ -3164,8 +3235,11 @@ class _CheckoutWebViewPageState extends State<CheckoutWebViewPage> {
       appBar: const _TopBar(title: 'CHECKOUT', onCart: null, showBack: true),
       body: Column(
         children: [
-          if (_progress < 100) LinearProgressIndicator(value: _progress / 100),
-          Expanded(child: WebViewWidget(controller: _controller)),
+          if (_progress < 100)
+            LinearProgressIndicator(value: _progress / 100),
+          Expanded(
+            child: WebViewWidget(controller: _controller),
+          ),
         ],
       ),
     );
@@ -3196,7 +3270,7 @@ class _InfoTabState extends State<InfoTab> {
       ..setNavigationDelegate(
         NavigationDelegate(onProgress: (p) => setState(() => _progress = p)),
       )
-      ..loadRequest(Uri.parse(widget.url));
+      ..loadRequest(Uri.parse(_withAppFlag(widget.url)));
   }
 
   @override
@@ -3728,7 +3802,7 @@ if (!_loading) ...[
       iconColor: Colors.white,
       textColor: Colors.white,
       title: const Text(
-        'Konto erstellen',
+        'Privatkunden Konto erstellen',
         style: TextStyle(color: Colors.white),
       ),
       trailing: const Icon(

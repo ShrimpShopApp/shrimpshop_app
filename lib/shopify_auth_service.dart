@@ -259,13 +259,13 @@ Future<void> markCustomerAsMobileApp({
       throw Exception('Kein Access Token erhalten.');
     }
 
-    final accessToken = tokenObj['accessToken'] as String;
+   final accessToken = tokenObj['accessToken'] as String;
 
-//    await markCustomerAsMobileApp(
-  //    customerAccessToken: accessToken,
-   // );
+await markCustomerAsMobileApp(
+  customerAccessToken: accessToken,
+);
 
-    return accessToken;
+return accessToken;
   }
 
   Future<Map<String, dynamic>> updateCustomerProfile({

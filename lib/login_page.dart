@@ -92,15 +92,20 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) return;
       Navigator.pop(context, true);
    
-   } catch (e) {
+} catch (e) {
   if (!mounted) return;
 
-  final msg = e.toString().toLowerCase();
+  final raw = e.toString().replaceFirst('Exception: ', '');
+  final msg = raw.toLowerCase();
 
-  String friendlyError = 'Login fehlgeschlagen.';
+  String friendlyError =
+      'Login fehlgeschlagen. Bitte prüfe deine Eingaben.';
 
-  if (msg.contains('unidentified customer')) {
-    friendlyError = 'E-Mail oder Passwort ist falsch.';
+  if (msg.contains('unidentified customer') ||
+      msg.contains('invalid login credentials') ||
+      msg.contains('incorrect')) {
+    friendlyError =
+        'E-Mail oder Passwort stimmt nicht. Wenn du bereits Kunde bist, aber noch nie ein Passwort gesetzt hast, nutze bitte „Passwort vergessen?“.';
   } else if (msg.contains('invalid')) {
     friendlyError = 'Ungültige Eingabe.';
   } else if (msg.contains('network')) {
@@ -153,6 +158,34 @@ class _LoginPageState extends State<LoginPage> {
               style: TextStyle(color: Colors.white70, fontSize: 14),
             ),
             const SizedBox(height: 16),
+
+Container(
+  padding: const EdgeInsets.all(14),
+  decoration: BoxDecoration(
+    color: Colors.white.withOpacity(0.06),
+    borderRadius: BorderRadius.circular(14),
+    border: Border.all(color: Colors.white24),
+  ),
+  child: const Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Icon(Icons.info_outline, color: Colors.white70),
+      SizedBox(width: 10),
+      Expanded(
+        child: Text(
+          'Schon Kunde im Shop? Wenn du noch nie ein Passwort für die App gesetzt hast, tippe bitte auf „Passwort festlegen / zurücksetzen“ und lege zuerst dein Passwort fest.',
+          style: TextStyle(
+            color: Colors.white70,
+            fontSize: 13.5,
+            height: 1.4,
+          ),
+        ),
+      ),
+    ],
+  ),
+),
+const SizedBox(height: 14),
+
 
             if (_error != null) ...[
               Container(
@@ -281,16 +314,26 @@ class _LoginPageState extends State<LoginPage> {
                     const SizedBox(height: 12),
 
                     TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const PasswordResetPage(),
-                          ),
-                        );
-                      },
+                      onPressed: () async {
+  final done = await Navigator.push<bool>(
+    context,
+    MaterialPageRoute(
+      builder: (_) => const PasswordResetPage(),
+    ),
+  );
+
+  if (done == true && context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Falls ein Konto mit dieser E-Mail existiert, wurde dir eine E-Mail zum Setzen deines Passworts gesendet.',
+        ),
+      ),
+    );
+  }
+},
                       child: const Text(
-                        'Passwort vergessen?',
+                        'Passwort festlegen / zurücksetzen',
                         style: TextStyle(
                           color: Colors.white70,
                           decoration: TextDecoration.underline,
@@ -318,6 +361,7 @@ class PasswordResetPage extends StatefulWidget {
 class _PasswordResetPageState extends State<PasswordResetPage> {
   late final WebViewController _controller;
   int _progress = 0;
+  bool _recoverSeen = false;
 
   @override
   void initState() {
@@ -327,7 +371,42 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
         NavigationDelegate(
-          onProgress: (p) => setState(() => _progress = p),
+          onProgress: (p) {
+            if (mounted) setState(() => _progress = p);
+          },
+          onPageStarted: (url) {
+            final u = url.toLowerCase();
+
+            if (u.contains('#recover') || u.contains('recover')) {
+              _recoverSeen = true;
+            }
+
+            if (_recoverSeen &&
+                u.contains('/account/login') &&
+                !u.contains('#recover')) {
+              if (mounted) {
+                Future.microtask(() => Navigator.pop(context, true));
+              }
+            }
+          },
+          onNavigationRequest: (request) {
+            final u = request.url.toLowerCase();
+
+            if (u.contains('#recover') || u.contains('recover')) {
+              _recoverSeen = true;
+            }
+
+            if (_recoverSeen &&
+                u.contains('/account/login') &&
+                !u.contains('#recover')) {
+              if (mounted) {
+                Future.microtask(() => Navigator.pop(context, true));
+              }
+              return NavigationDecision.prevent;
+            }
+
+            return NavigationDecision.navigate;
+          },
         ),
       )
       ..loadRequest(
