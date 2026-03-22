@@ -313,25 +313,15 @@ const SizedBox(height: 14),
 
                     const SizedBox(height: 12),
 
-                    TextButton(
-                      onPressed: () async {
-  final done = await Navigator.push<bool>(
-    context,
-    MaterialPageRoute(
-      builder: (_) => const PasswordResetPage(),
-    ),
-  );
-
-  if (done == true && context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Falls ein Konto mit dieser E-Mail existiert, wurde dir eine E-Mail zum Setzen deines Passworts gesendet.',
-        ),
+                   TextButton(
+  onPressed: () async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const PasswordResetPage(),
       ),
     );
-  }
-},
+  },
                       child: const Text(
                         'Passwort festlegen / zurücksetzen',
                         style: TextStyle(
@@ -351,6 +341,7 @@ const SizedBox(height: 14),
   }
 }
 
+
 class PasswordResetPage extends StatefulWidget {
   const PasswordResetPage({super.key});
 
@@ -361,7 +352,6 @@ class PasswordResetPage extends StatefulWidget {
 class _PasswordResetPageState extends State<PasswordResetPage> {
   late final WebViewController _controller;
   int _progress = 0;
-  bool _recoverSeen = false;
 
   @override
   void initState() {
@@ -370,47 +360,17 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
-        NavigationDelegate(
-          onProgress: (p) {
-            if (mounted) setState(() => _progress = p);
-          },
-          onPageStarted: (url) {
-            final u = url.toLowerCase();
-
-            if (u.contains('#recover') || u.contains('recover')) {
-              _recoverSeen = true;
-            }
-
-            if (_recoverSeen &&
-                u.contains('/account/login') &&
-                !u.contains('#recover')) {
-              if (mounted) {
-                Future.microtask(() => Navigator.pop(context, true));
-              }
-            }
-          },
-          onNavigationRequest: (request) {
-            final u = request.url.toLowerCase();
-
-            if (u.contains('#recover') || u.contains('recover')) {
-              _recoverSeen = true;
-            }
-
-            if (_recoverSeen &&
-                u.contains('/account/login') &&
-                !u.contains('#recover')) {
-              if (mounted) {
-                Future.microtask(() => Navigator.pop(context, true));
-              }
-              return NavigationDecision.prevent;
-            }
-
-            return NavigationDecision.navigate;
-          },
-        ),
-      )
+  NavigationDelegate(
+    onProgress: (p) {
+      if (mounted) setState(() => _progress = p);
+    },
+    onNavigationRequest: (request) {
+      return NavigationDecision.navigate;
+    },
+  ),
+)
       ..loadRequest(
-        Uri.parse('https://shrimpshop.ch/account/login#recover'),
+        Uri.parse('https://shrimpshop.ch/account/login?app=1#recover'),
       );
   }
 

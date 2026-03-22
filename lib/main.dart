@@ -34,7 +34,8 @@ const kBg = Color.fromARGB(255, 0, 0, 0);
 const kCard = Color.fromARGB(255, 0, 0, 0);
 const kBorder = Color(0xFFEAEAEA);
 
-String _withAppFlag(String url) {
+
+String withAppParam(String url) {
   final uri = Uri.parse(url);
   final params = Map<String, String>.from(uri.queryParameters);
   params['app'] = '1';
@@ -809,10 +810,10 @@ class _MainShellState extends State<MainShell> {
   const HomeCategoriesTab(),
   
  // RecipesPage(), // ✅ NEU: Rezepte Tab
-  const InfoTab(
-    title: 'Story',
-    url: 'https://shrimpshop.ch/pages/unsere-story-team',
-  ),
+ InfoTab(
+  title: 'Story',
+  url: withAppParam('https://shrimpshop.ch/pages/unsere-story-team'),
+),
   const ProductsTab(),
   const MoreTab(),
 ];
@@ -3226,7 +3227,7 @@ class _CheckoutWebViewPageState extends State<CheckoutWebViewPage> {
           },
         ),
       )
-     ..loadRequest(Uri.parse(_withAppFlag(widget.url)));
+     ..loadRequest(Uri.parse(withAppParam(widget.url)));
   }
 
   @override
@@ -3270,7 +3271,7 @@ class _InfoTabState extends State<InfoTab> {
       ..setNavigationDelegate(
         NavigationDelegate(onProgress: (p) => setState(() => _progress = p)),
       )
-      ..loadRequest(Uri.parse(_withAppFlag(widget.url)));
+      ..loadRequest(Uri.parse(withAppParam(widget.url)));
   }
 
   @override
@@ -3498,10 +3499,10 @@ if (!_loading && _customer != null) ...[
   onTap: () => Navigator.push(
     context,
     MaterialPageRoute(
-      builder: (_) => const InfoTab(
-        title: 'Impressum',
-        url: 'https://shrimpshop.ch/policies/legal-notice',
-      ),
+     builder: (_) => InfoTab(
+  title: 'Impressum',
+  url: withAppParam('https://shrimpshop.ch/policies/legal-notice'),
+),
     ),
   ),
 ),
@@ -3521,10 +3522,10 @@ if (!_loading && _customer != null) ...[
   onTap: () => Navigator.push(
     context,
     MaterialPageRoute(
-      builder: (_) => const InfoTab(
-        title: 'Datenschutz',
-        url: 'https://shrimpshop.ch/policies/privacy-policy',
-      ),
+     builder: (_) => InfoTab(
+  title: 'Datenschutz',
+  url: withAppParam('https://shrimpshop.ch/policies/privacy-policy'),
+),
     ),
   ),
 ),
@@ -4113,7 +4114,10 @@ class _HomeCarouselImage extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => InfoTab(title: 'ShrimpShop', url: url),
+              builder: (_) => InfoTab(
+  title: 'ShrimpShop',
+  url: withAppParam(url),
+),
             ),
           );
         },
