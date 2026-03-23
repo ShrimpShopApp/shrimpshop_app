@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'shopify_auth_service.dart';
@@ -105,7 +107,7 @@ class _LoginPageState extends State<LoginPage> {
       msg.contains('invalid login credentials') ||
       msg.contains('incorrect')) {
     friendlyError =
-        'E-Mail oder Passwort stimmt nicht. Wenn du bereits Kunde bist, aber noch nie ein Passwort gesetzt hast, nutze bitte „Passwort vergessen?“.';
+        'E-Mail oder Passwort stimmt nicht. Wenn du bereits Kunde bist, aber noch nie ein Passwort gesetzt hast, nutze bitte „Passwort festlegen / zurücksetzen“.';
   } else if (msg.contains('invalid')) {
     friendlyError = 'Ungültige Eingabe.';
   } else if (msg.contains('network')) {
@@ -313,23 +315,33 @@ const SizedBox(height: 14),
 
                     const SizedBox(height: 12),
 
-                   TextButton(
+                  TextButton(
   onPressed: () async {
-    await Navigator.push(
+    final done = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (_) => const PasswordResetPage(),
       ),
     );
+
+    if (done == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Falls ein Konto mit dieser E-Mail existiert, wurde dir eine E-Mail zum Setzen deines Passworts gesendet.',
+          ),
+        ),
+      );
+    }
   },
-                      child: const Text(
-                        'Passwort festlegen / zurücksetzen',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    ),
+  child: const Text(
+    'Passwort festlegen / zurücksetzen',
+    style: TextStyle(
+      color: Colors.white70,
+      decoration: TextDecoration.underline,
+    ),
+  ),
+),
                   ],
                 ),
               ),
@@ -353,6 +365,9 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
   late final WebViewController _controller;
   int _progress = 0;
 
+  Timer? _pollTimer;
+  bool _handledSuccess = false;
+
   @override
   void initState() {
     super.initState();
@@ -360,18 +375,60 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
-  NavigationDelegate(
-    onProgress: (p) {
-      if (mounted) setState(() => _progress = p);
-    },
-    onNavigationRequest: (request) {
-      return NavigationDecision.navigate;
-    },
-  ),
-)
+        NavigationDelegate(
+          onProgress: (p) {
+            if (mounted) setState(() => _progress = p);
+          },
+        ),
+      )
       ..loadRequest(
         Uri.parse('https://shrimpshop.ch/account/login?app=1#recover'),
       );
+
+    _startSuccessPolling();
+  }
+
+  void _startSuccessPolling() {
+    _pollTimer?.cancel();
+
+    _pollTimer = Timer.periodic(const Duration(milliseconds: 800), (_) async {
+      if (!mounted || _handledSuccess) return;
+
+      try {
+        final result = await _controller.runJavaScriptReturningResult('''
+          (() => {
+            const text = (document.body?.innerText || '').toLowerCase();
+            return text;
+          })();
+        ''');
+
+        final bodyText = result.toString().toLowerCase();
+
+        final successDetected =
+            bodyText.contains('wir haben dir eine e-mail mit einem link zum aktualisieren deines passworts geschickt') ||
+            bodyText.contains('wir haben ihnen eine e-mail mit einem link zum aktualisieren ihres passworts geschickt') ||
+            bodyText.contains('falls ein konto mit dieser e-mail existiert') ||
+            bodyText.contains('wir haben dir eine e-mail gesendet') ||
+            bodyText.contains('wir haben ihnen eine e-mail gesendet') ||
+            bodyText.contains('check your email for a link to reset your password') ||
+            bodyText.contains('if your email address is in our records') ||
+            bodyText.contains('we have sent you an email');
+
+        if (successDetected && mounted) {
+          _handledSuccess = true;
+          _pollTimer?.cancel();
+          Navigator.pop(context, true);
+        }
+      } catch (_) {
+        // ignorieren
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
   }
 
   @override
